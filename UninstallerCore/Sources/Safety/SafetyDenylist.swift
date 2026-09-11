@@ -22,7 +22,18 @@ public final class SafetyDenylist: @unchecked Sendable {
             "/private/var/db",
             "/Library/Apple",
             "/Library/OSAnalytics",
-            "/Library/SystemExtensions"
+            "/Library/SystemExtensions",
+            "/Library/Keychains",
+            "/Library/Extensions",
+            "/Library/Frameworks",
+            "/Library/Security",
+            "/Library/Managed Preferences",
+            "/Library/Preferences/SystemConfiguration",
+            "/Library/Filesystems",
+            "/Library/Updates",
+            "/Library/User Template",
+            "/Library/WebServer",
+            "/usr/local"
         ]
         self.protectedBundlePrefixes = protectedBundlePrefixes ?? [
             "com.apple.",
@@ -32,7 +43,13 @@ public final class SafetyDenylist: @unchecked Sendable {
     }
 
     public func denyReason(for path: String, bundleHint: String? = nil) -> String? {
-        let standardized = (path as NSString).standardizingPath
+        // Resolve symlinks before evaluation.
+        let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+        let standardized = (resolved as NSString).standardizingPath
+
+        if PathAllowlist.isSymlink(at: path) {
+            return "Refusing symlink leaves"
+        }
 
         if standardized == "/" || standardized.isEmpty {
             return "Refusing to operate on filesystem root"
@@ -56,8 +73,10 @@ public final class SafetyDenylist: @unchecked Sendable {
             "/Library",
             "/Library/Preferences",
             "/Library/Application Support",
+            "/Library/Caches",
             "/Library/LaunchAgents",
             "/Library/LaunchDaemons",
+            "/Library/PrivilegedHelperTools",
             "/Applications"
         ]
         if dangerousExact.contains(standardized) {
@@ -75,8 +94,8 @@ public final class SafetyDenylist: @unchecked Sendable {
             }
         }
 
-        // Allow /usr/local explicitly (not SIP).
-        if standardized.hasPrefix("/usr/") && !standardized.hasPrefix("/usr/local") {
+        // Block all of /usr including /usr/local for safety in the main app path as well.
+        if standardized.hasPrefix("/usr/") || standardized == "/usr" {
             return "System unix path under /usr"
         }
 

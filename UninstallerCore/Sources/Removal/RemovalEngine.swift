@@ -25,9 +25,13 @@ public final class RemovalEngine: @unchecked Sendable {
     }
 
     public var reportsDirectory: URL {
-        let base = fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/SafeUninstaller/Reports", isDirectory: true)
+        let support = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/SafeUninstaller", isDirectory: true)
+        let base = support.appendingPathComponent("Reports", isDirectory: true)
         try? fileManager.createDirectory(at: base, withIntermediateDirectories: true)
+        // Restrict to the current user (0700).
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: support.path)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: base.path)
         return base
     }
 
@@ -126,7 +130,7 @@ public final class RemovalEngine: @unchecked Sendable {
         let attributed = orphans.map { orphan in
             AttributedResource(
                 resource: orphan.resource,
-                signals: [.exactBundleID],
+                signals: [],
                 confidence: orphan.confidence,
                 score: orphan.confidence == .high ? 0.9 : 0.5,
                 isSelected: orphan.isSelected
@@ -145,6 +149,17 @@ public final class RemovalEngine: @unchecked Sendable {
         let url = URL(fileURLWithPath: path)
 
         if item.resource.requiresPrivilege {
+            if let allowReason = PathAllowlist.privilegedTrashDenialReason(for: path) {
+                return RemovalItemResult(
+                    path: path,
+                    category: item.resource.category,
+                    confidence: item.confidence,
+                    signals: item.signals,
+                    outcome: .skippedDenied,
+                    errorMessage: allowReason,
+                    byteSize: item.resource.byteSize
+                )
+            }
             if let client = privilegedClient, client.isAvailable {
                 do {
                     let map = try await client.trashItems(at: [path])

@@ -11,6 +11,15 @@ struct ContentView: View {
                     Label(item.rawValue, systemImage: item.systemImage)
                         .tag(item)
                 }
+                if !model.hasFDA {
+                    Divider()
+                    Button {
+                        model.showSetupSheet = true
+                    } label: {
+                        Label("Setup", systemImage: "lock.shield")
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
@@ -18,31 +27,31 @@ struct ContentView: View {
             switch model.sidebar {
             case .applications:
                 ApplicationListView()
-            case .orphans:
+            case .leftovers:
                 OrphanListView()
-            case .reports:
+            case .history:
                 ReportsListView()
-            case .settings:
-                PermissionsView()
             }
         } detail: {
             switch model.sidebar {
             case .applications:
                 AppDetailView()
-            case .orphans:
+            case .leftovers:
                 OrphanDetailView()
-            case .reports:
+            case .history:
                 ReportDetailView()
-            case .settings:
-                PermissionsDetailView()
             }
         }
         .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if model.sidebar == .applications {
+                    Button("Setup") { model.showSetupSheet = true }
+                }
+            }
             ToolbarItem(placement: .status) {
                 HStack(spacing: 8) {
-                    if model.isScanning || model.isRemoving {
-                        ProgressView()
-                            .controlSize(.small)
+                    if model.isBusy {
+                        ProgressView().controlSize(.small)
                     }
                     Text(model.statusMessage)
                         .font(.caption)
@@ -51,7 +60,38 @@ struct ContentView: View {
                 }
             }
         }
-        .alert("Error", isPresented: Binding(
+        .overlay {
+            if model.isDropTargeted {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.accentColor, lineWidth: 3)
+                    .background(Color.accentColor.opacity(0.08))
+                    .padding(8)
+                    .allowsHitTesting(false)
+                VStack {
+                    Image(systemName: "app.dashed")
+                        .font(.largeTitle)
+                    Text("Drop .app to analyze")
+                        .font(.headline)
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let toast = model.toastMessage {
+                ToastBanner(
+                    message: toast,
+                    onOpenTrash: { model.openTrash() },
+                    onViewReport: {
+                        model.sidebar = .history
+                        model.toastMessage = nil
+                    }
+                )
+                .padding()
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut, value: model.toastMessage)
+        .alert("Something went wrong", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
         )) {
@@ -63,28 +103,105 @@ struct ContentView: View {
             ConfirmRemovalSheet()
                 .environmentObject(model)
         }
-        .overlay(alignment: .top) {
-            if !model.hasFDA {
-                FDABanner()
-            }
+        .sheet(isPresented: $model.showSetupSheet) {
+            SetupSheet()
+                .environmentObject(model)
         }
     }
 }
 
-struct FDABanner: View {
+struct ToastBanner: View {
+    let message: String
+    var onOpenTrash: () -> Void
+    var onViewReport: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Text(message)
+                .font(.callout)
+            Spacer()
+            Button("Open Trash", action: onOpenTrash)
+            Button("View Report", action: onViewReport)
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .shadow(radius: 8, y: 2)
+        .frame(maxWidth: 520)
+    }
+}
+
+struct SetupSheet: View {
     @EnvironmentObject private var model: AppViewModel
 
     var body: some View {
-        HStack {
-            Image(systemName: "exclamationmark.shield")
-            Text("Full Disk Access is recommended for complete Library scanning.")
-                .font(.callout)
-            Spacer()
-            Button("Open Settings") { model.openFullDiskAccessSettings() }
-            Button("Recheck") { model.refreshPermissions() }
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Welcome to SafeUninstaller")
+                .font(.title2.bold())
+            Text("A few permissions help the app find leftovers accurately. Nothing is deleted until you review and confirm.")
+                .foregroundStyle(.secondary)
+
+            GroupBox("Full Disk Access") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: model.hasFDA ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(model.hasFDA ? .green : .orange)
+                        Text(model.hasFDA ? "Granted" : "Not granted")
+                            .fontWeight(.medium)
+                    }
+                    Text("Needed to scan protected Library folders for related files.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button("Open System Settings") { model.openFullDiskAccessSettings() }
+                        Button("Recheck") { model.refreshPermissions() }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(4)
+            }
+
+            GroupBox("Privileged Helper (optional)") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(model.helperStatus)
+                        .fontWeight(.medium)
+                    Text("Only required for root-owned files under /Library. User Library cleanup works without it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button("Register Helper") { model.registerHelper() }
+                            .disabled(!model.canRegisterHelper)
+                        Button("Login Items…") { model.openLoginItemsSettings() }
+                    }
+                    if !model.canRegisterHelper {
+                        Text("Requires Developer ID / Apple Development signing with a Team ID.")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(4)
+            }
+
+            HStack {
+                Button("Not Now") {
+                    model.dismissSetup(permanently: false)
+                    model.showSetupSheet = false
+                }
+                Spacer()
+                Button("Start Cleaning") {
+                    model.showSetupSheet = false
+                    if model.hasFDA {
+                        model.dismissSetup(permanently: true)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+            }
         }
-        .padding(10)
-        .background(.yellow.opacity(0.85))
-        .foregroundStyle(.black)
+        .padding(24)
+        .frame(width: 480)
+        .onAppear { model.refreshPermissions() }
     }
 }
