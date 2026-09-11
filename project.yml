@@ -1,0 +1,126 @@
+name: SafeUninstaller
+options:
+  bundleIdPrefix: com.safeuninstaller
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    CLANG_ENABLE_MODULES: YES
+targets:
+  UninstallerCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: UninstallerCore/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeuninstaller.UninstallerCore
+        PRODUCT_NAME: UninstallerCore
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+    scheme:
+      testTargets:
+        - UninstallerCoreTests
+
+  UninstallerCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: UninstallerCore/Tests
+    dependencies:
+      - target: UninstallerCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeuninstaller.UninstallerCoreTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: ""
+
+  UninstallerHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - path: UninstallerHelper
+        excludes:
+          - "*.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeuninstaller.UninstallerHelper
+        PRODUCT_NAME: UninstallerHelper
+        SKIP_INSTALL: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        INFOPLIST_FILE: UninstallerHelper/Info.plist
+    dependencies:
+      - target: UninstallerCore
+
+  SafeUninstaller:
+    type: application
+    platform: macOS
+    sources:
+      - path: SafeUninstaller
+        excludes:
+          - "**/*.entitlements"
+          - "Resources/com.safeuninstaller.UninstallerHelper.plist"
+      - path: SafeUninstaller/Resources/com.safeuninstaller.UninstallerHelper.plist
+        type: file
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeuninstaller.app
+        PRODUCT_NAME: SafeUninstaller
+        INFOPLIST_FILE: SafeUninstaller/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SafeUninstaller/SafeUninstaller.entitlements
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+    dependencies:
+      - target: UninstallerCore
+        embed: true
+      - target: UninstallerHelper
+        embed: false
+        link: false
+    postCompileScripts:
+      - name: Embed Helper Daemon
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          HELPER_SRC="${BUILT_PRODUCTS_DIR}/UninstallerHelper"
+          DEST_DIR="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Library/LaunchDaemons"
+          PLIST_SRC="${SRCROOT}/SafeUninstaller/Resources/com.safeuninstaller.UninstallerHelper.plist"
+          mkdir -p "${DEST_DIR}"
+          if [ -f "${HELPER_SRC}" ]; then
+            cp -f "${HELPER_SRC}" "${DEST_DIR}/UninstallerHelper"
+            chmod 755 "${DEST_DIR}/UninstallerHelper"
+          fi
+          if [ -f "${PLIST_SRC}" ]; then
+            cp -f "${PLIST_SRC}" "${DEST_DIR}/com.safeuninstaller.UninstallerHelper.plist"
+          fi
+schemes:
+  SafeUninstaller:
+    build:
+      targets:
+        UninstallerCore: all
+        UninstallerHelper: all
+        SafeUninstaller: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - UninstallerCoreTests
+  UninstallerCore:
+    build:
+      targets:
+        UninstallerCore: all
+    test:
+      config: Debug
+      targets:
+        - UninstallerCoreTests

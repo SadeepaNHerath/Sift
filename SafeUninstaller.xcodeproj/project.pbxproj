@@ -1,0 +1,876 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0109FB42F3E04FBCB24CEAE6 /* OrphanSearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8F0DA843E47CAE3FAC5F82 /* OrphanSearchEngine.swift */; };
+		17C514D2CBDC201842D93BED /* SafeUninstallerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3157B2164DF854AA07E6E4D /* SafeUninstallerApp.swift */; };
+		18AE34F230C0E5C7182B52E9 /* HelperXPCClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B07428EE7FB11AF203161E /* HelperXPCClient.swift */; };
+		2B5DE6E6EE07004E8D043EF2 /* ResourceDiscoveryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE18F3E5370639A6A0C49E31 /* ResourceDiscoveryEngine.swift */; };
+		2C1B43F86D0EC612F4AE3E58 /* AuditReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 813B70012F31CE48B5A51895 /* AuditReport.swift */; };
+		31F6D66AE85830E04AD6FAA2 /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14B83BEB7FBAE5EC6BCDCDD /* AppIdentity.swift */; };
+		3F7088BA39FD4F005DAFF919 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561B71CF26198FC0C14EF7D6 /* AppViewModel.swift */; };
+		4714CEF6811DBCB191806479 /* UninstallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3911CEB5150BDB074297EF /* UninstallService.swift */; };
+		6EDA1EB07A9449877C6F62BA /* UninstallerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		75B2E71B5087CCD30D0B7BBF /* AttributionEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2894E3E234EF7E23C206952 /* AttributionEngineTests.swift */; };
+		75CD612FF207B033C453E1A9 /* SafetyDenylist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03364CB7BB67A060184BAA09 /* SafetyDenylist.swift */; };
+		7C6071944342FC92EE83B781 /* UninstallerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; };
+		7F39CA1B5B96225F15BF237C /* OrphanReportsPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53C848A5F48450B1D302839E /* OrphanReportsPermissions.swift */; };
+		81247EC00EBB33023A6CE7C9 /* ResourceAttributionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56AF6C4FD69D952365D97FA6 /* ResourceAttributionEngine.swift */; };
+		8572DB561597BFE76CA7E45B /* RemovalEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77024C9EB0449BBC023A8F66 /* RemovalEngine.swift */; };
+		9F75014B3D571DCAE60CDD3B /* AttributionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C4726BFA12371EF3D5DE49 /* AttributionModels.swift */; };
+		AC2A2A199BF875DDDFD906E4 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A4ABDDCB84614911FE9C59E /* main.swift */; };
+		AEE17FC2B9AB746ED9EEA6FF /* DiscoveredResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE6EDB1BA86EF6A8073ACC2 /* DiscoveredResource.swift */; };
+		B0FE4806DFDACF8E0E82421E /* com.safeuninstaller.UninstallerHelper.plist in Resources */ = {isa = PBXBuildFile; fileRef = C2145BB272E2DE92D61AB916 /* com.safeuninstaller.UninstallerHelper.plist */; };
+		B2C486AE1E174E216E3ECE85 /* UninstallerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B4939F99C7D8BEE0242E2FC4 /* UninstallerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; };
+		C5267272413FE16B5173E1E5 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBBCB88BDDD79423471CD2CE /* ContentView.swift */; };
+		CD9DC4C3E3F8FFDAF3AF50CF /* HelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AB329A20EA4571AFED9729 /* HelperProtocol.swift */; };
+		DA17702A44AA1EFE6055F8EC /* ApplicationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA66AB177F8ECA8E89B6088 /* ApplicationViews.swift */; };
+		EB1B0548CF958AD0EB45766C /* AppInventoryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA600D162169C2BBFF03CE4 /* AppInventoryScanner.swift */; };
+		F65A2FE92F1E424B2938EFC5 /* UninstallerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		58E110A3CB0ADD4FCF75DBDF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8C1B46B49D344B34AAFD0E1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7837614A3FA0FE0063064341;
+			remoteInfo = UninstallerCore;
+		};
+		61A322DFC395F0CD102F4D2C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8C1B46B49D344B34AAFD0E1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B49F569383051F2C08B5CD9D;
+			remoteInfo = UninstallerHelper;
+		};
+		B9E74B5FB735EAE48F11CE7A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8C1B46B49D344B34AAFD0E1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7837614A3FA0FE0063064341;
+			remoteInfo = UninstallerCore;
+		};
+		DADC22EF1930BE58E4518B05 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8C1B46B49D344B34AAFD0E1C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7837614A3FA0FE0063064341;
+			remoteInfo = UninstallerCore;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B0A0A1629B5A1CBDEEFEBE85 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				6EDA1EB07A9449877C6F62BA /* UninstallerCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3727068ACCA435627CF826E /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				B2C486AE1E174E216E3ECE85 /* UninstallerCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		03364CB7BB67A060184BAA09 /* SafetyDenylist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyDenylist.swift; sourceTree = "<group>"; };
+		0A4ABDDCB84614911FE9C59E /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		1CA600D162169C2BBFF03CE4 /* AppInventoryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInventoryScanner.swift; sourceTree = "<group>"; };
+		2EE6EDB1BA86EF6A8073ACC2 /* DiscoveredResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveredResource.swift; sourceTree = "<group>"; };
+		3A7A81B8FC81A86FD80C2867 /* UninstallerHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = UninstallerHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = UninstallerCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		53C848A5F48450B1D302839E /* OrphanReportsPermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrphanReportsPermissions.swift; sourceTree = "<group>"; };
+		561B71CF26198FC0C14EF7D6 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
+		56AF6C4FD69D952365D97FA6 /* ResourceAttributionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceAttributionEngine.swift; sourceTree = "<group>"; };
+		57B07428EE7FB11AF203161E /* HelperXPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperXPCClient.swift; sourceTree = "<group>"; };
+		6E3911CEB5150BDB074297EF /* UninstallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallService.swift; sourceTree = "<group>"; };
+		77024C9EB0449BBC023A8F66 /* RemovalEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemovalEngine.swift; sourceTree = "<group>"; };
+		7CA66AB177F8ECA8E89B6088 /* ApplicationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationViews.swift; sourceTree = "<group>"; };
+		813B70012F31CE48B5A51895 /* AuditReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditReport.swift; sourceTree = "<group>"; };
+		91C4726BFA12371EF3D5DE49 /* AttributionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionModels.swift; sourceTree = "<group>"; };
+		A14B83BEB7FBAE5EC6BCDCDD /* AppIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIdentity.swift; sourceTree = "<group>"; };
+		B2894E3E234EF7E23C206952 /* AttributionEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngineTests.swift; sourceTree = "<group>"; };
+		B2AB329A20EA4571AFED9729 /* HelperProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperProtocol.swift; sourceTree = "<group>"; };
+		B2D35518F9727AFF4A281644 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B3157B2164DF854AA07E6E4D /* SafeUninstallerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeUninstallerApp.swift; sourceTree = "<group>"; };
+		C2145BB272E2DE92D61AB916 /* com.safeuninstaller.UninstallerHelper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = com.safeuninstaller.UninstallerHelper.plist; sourceTree = "<group>"; };
+		C7C892DC978EE5BD2E59A737 /* UninstallerCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UninstallerCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB8F0DA843E47CAE3FAC5F82 /* OrphanSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrphanSearchEngine.swift; sourceTree = "<group>"; };
+		CBBCB88BDDD79423471CD2CE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EB63AC02A6A4D433907164C1 /* SafeUninstaller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SafeUninstaller.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE18F3E5370639A6A0C49E31 /* ResourceDiscoveryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceDiscoveryEngine.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		342CB8C40C9831C21A8A41A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C6071944342FC92EE83B781 /* UninstallerCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4275C87F4B0DFF061A5D2151 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4939F99C7D8BEE0242E2FC4 /* UninstallerCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A27EB93244E753D134C709C2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F65A2FE92F1E424B2938EFC5 /* UninstallerCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		019375A8E6BB01D763B4AB80 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				561B71CF26198FC0C14EF7D6 /* AppViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		0269312C021AEB1B313E4E91 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EB63AC02A6A4D433907164C1 /* SafeUninstaller.app */,
+				419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */,
+				C7C892DC978EE5BD2E59A737 /* UninstallerCoreTests.xctest */,
+				3A7A81B8FC81A86FD80C2867 /* UninstallerHelper */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		048D7EBE0CE7B91CC60D3476 /* Removal */ = {
+			isa = PBXGroup;
+			children = (
+				77024C9EB0449BBC023A8F66 /* RemovalEngine.swift */,
+			);
+			path = Removal;
+			sourceTree = "<group>";
+		};
+		24EB5FB81C04B07B8C753828 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				7CA66AB177F8ECA8E89B6088 /* ApplicationViews.swift */,
+				CBBCB88BDDD79423471CD2CE /* ContentView.swift */,
+				53C848A5F48450B1D302839E /* OrphanReportsPermissions.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		39D2870513848624021D76A5 /* UninstallerCore */ = {
+			isa = PBXGroup;
+			children = (
+				FF750607E495D5847A6956EE /* Sources */,
+				B4213C91E618FC0994D33196 /* Tests */,
+			);
+			path = UninstallerCore;
+			sourceTree = "<group>";
+		};
+		41F8CE72EEEF67021B9E2E5F /* Attribution */ = {
+			isa = PBXGroup;
+			children = (
+				56AF6C4FD69D952365D97FA6 /* ResourceAttributionEngine.swift */,
+			);
+			path = Attribution;
+			sourceTree = "<group>";
+		};
+		5790B3453D3CAA8F102B0EB7 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A14B83BEB7FBAE5EC6BCDCDD /* AppIdentity.swift */,
+				91C4726BFA12371EF3D5DE49 /* AttributionModels.swift */,
+				813B70012F31CE48B5A51895 /* AuditReport.swift */,
+				2EE6EDB1BA86EF6A8073ACC2 /* DiscoveredResource.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		5905AA28F334EF344CBC7D2E /* Discovery */ = {
+			isa = PBXGroup;
+			children = (
+				FE18F3E5370639A6A0C49E31 /* ResourceDiscoveryEngine.swift */,
+			);
+			path = Discovery;
+			sourceTree = "<group>";
+		};
+		5FFA73D421548FD23B95B3CD /* Safety */ = {
+			isa = PBXGroup;
+			children = (
+				03364CB7BB67A060184BAA09 /* SafetyDenylist.swift */,
+			);
+			path = Safety;
+			sourceTree = "<group>";
+		};
+		7EDA3E9CDE01E31A15E75C2E = {
+			isa = PBXGroup;
+			children = (
+				D49054CBE65B16FFC14F77F8 /* SafeUninstaller */,
+				39D2870513848624021D76A5 /* UninstallerCore */,
+				B4CDFE5DF6EF328215FD40C0 /* UninstallerHelper */,
+				0269312C021AEB1B313E4E91 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B4213C91E618FC0994D33196 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				B2894E3E234EF7E23C206952 /* AttributionEngineTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		B4CDFE5DF6EF328215FD40C0 /* UninstallerHelper */ = {
+			isa = PBXGroup;
+			children = (
+				0A4ABDDCB84614911FE9C59E /* main.swift */,
+			);
+			path = UninstallerHelper;
+			sourceTree = "<group>";
+		};
+		C2426B73F898A0A6959639B9 /* Helper */ = {
+			isa = PBXGroup;
+			children = (
+				B2AB329A20EA4571AFED9729 /* HelperProtocol.swift */,
+				57B07428EE7FB11AF203161E /* HelperXPCClient.swift */,
+			);
+			path = Helper;
+			sourceTree = "<group>";
+		};
+		D49054CBE65B16FFC14F77F8 /* SafeUninstaller */ = {
+			isa = PBXGroup;
+			children = (
+				D4E6E1ADA2A111D48F4E8647 /* Resources */,
+				019375A8E6BB01D763B4AB80 /* ViewModels */,
+				24EB5FB81C04B07B8C753828 /* Views */,
+				B2D35518F9727AFF4A281644 /* Info.plist */,
+				B3157B2164DF854AA07E6E4D /* SafeUninstallerApp.swift */,
+			);
+			path = SafeUninstaller;
+			sourceTree = "<group>";
+		};
+		D4E6E1ADA2A111D48F4E8647 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C2145BB272E2DE92D61AB916 /* com.safeuninstaller.UninstallerHelper.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		D587D636A11A03E44BC70B8D /* Orphan */ = {
+			isa = PBXGroup;
+			children = (
+				CB8F0DA843E47CAE3FAC5F82 /* OrphanSearchEngine.swift */,
+			);
+			path = Orphan;
+			sourceTree = "<group>";
+		};
+		D783ECA65F38BAAB92BBCD69 /* Identification */ = {
+			isa = PBXGroup;
+			children = (
+				1CA600D162169C2BBFF03CE4 /* AppInventoryScanner.swift */,
+			);
+			path = Identification;
+			sourceTree = "<group>";
+		};
+		FF750607E495D5847A6956EE /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				41F8CE72EEEF67021B9E2E5F /* Attribution */,
+				5905AA28F334EF344CBC7D2E /* Discovery */,
+				C2426B73F898A0A6959639B9 /* Helper */,
+				D783ECA65F38BAAB92BBCD69 /* Identification */,
+				5790B3453D3CAA8F102B0EB7 /* Models */,
+				D587D636A11A03E44BC70B8D /* Orphan */,
+				048D7EBE0CE7B91CC60D3476 /* Removal */,
+				5FFA73D421548FD23B95B3CD /* Safety */,
+				6E3911CEB5150BDB074297EF /* UninstallService.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		090B36CFF6A88DA630281464 /* SafeUninstaller */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B782F5A6D42DC42453C13497 /* Build configuration list for PBXNativeTarget "SafeUninstaller" */;
+			buildPhases = (
+				1350340661D3FDBFF26B6326 /* Sources */,
+				107EAD32356777E6615A721A /* Embed Helper Daemon */,
+				019A248B3ED1F7CF15A25B8A /* Resources */,
+				4275C87F4B0DFF061A5D2151 /* Frameworks */,
+				B3727068ACCA435627CF826E /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				126721CAF1C94C0CDFFABBAB /* PBXTargetDependency */,
+				B7FFDECCA61DB7DF5B9775DB /* PBXTargetDependency */,
+			);
+			name = SafeUninstaller;
+			packageProductDependencies = (
+			);
+			productName = SafeUninstaller;
+			productReference = EB63AC02A6A4D433907164C1 /* SafeUninstaller.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5B0FD631F0CA360A5AB24DD5 /* UninstallerCoreTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 451BE500E3AA1F82BF9FADE2 /* Build configuration list for PBXNativeTarget "UninstallerCoreTests" */;
+			buildPhases = (
+				EEA4C59A4C3265ACB8CB65F4 /* Sources */,
+				342CB8C40C9831C21A8A41A4 /* Frameworks */,
+				B0A0A1629B5A1CBDEEFEBE85 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EF37A614FB6D3CCED4E1C9EF /* PBXTargetDependency */,
+			);
+			name = UninstallerCoreTests;
+			packageProductDependencies = (
+			);
+			productName = UninstallerCoreTests;
+			productReference = C7C892DC978EE5BD2E59A737 /* UninstallerCoreTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7837614A3FA0FE0063064341 /* UninstallerCore */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3B4A09FFDB533A65BF857633 /* Build configuration list for PBXNativeTarget "UninstallerCore" */;
+			buildPhases = (
+				5A7FCEEC918C5BAA2FF851FC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UninstallerCore;
+			packageProductDependencies = (
+			);
+			productName = UninstallerCore;
+			productReference = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		B49F569383051F2C08B5CD9D /* UninstallerHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D2058C436561CCF8451C1974 /* Build configuration list for PBXNativeTarget "UninstallerHelper" */;
+			buildPhases = (
+				1B83D7BDB78421D0151B5F43 /* Sources */,
+				A27EB93244E753D134C709C2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1724D6D2600CC755C5C3902C /* PBXTargetDependency */,
+			);
+			name = UninstallerHelper;
+			packageProductDependencies = (
+			);
+			productName = UninstallerHelper;
+			productReference = 3A7A81B8FC81A86FD80C2867 /* UninstallerHelper */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8C1B46B49D344B34AAFD0E1C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					090B36CFF6A88DA630281464 = {
+						ProvisioningStyle = Automatic;
+					};
+					5B0FD631F0CA360A5AB24DD5 = {
+						ProvisioningStyle = Automatic;
+					};
+					7837614A3FA0FE0063064341 = {
+						ProvisioningStyle = Automatic;
+					};
+					B49F569383051F2C08B5CD9D = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = EA267AC13AD962E5181ABC62 /* Build configuration list for PBXProject "SafeUninstaller" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7EDA3E9CDE01E31A15E75C2E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0269312C021AEB1B313E4E91 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7837614A3FA0FE0063064341 /* UninstallerCore */,
+				5B0FD631F0CA360A5AB24DD5 /* UninstallerCoreTests */,
+				B49F569383051F2C08B5CD9D /* UninstallerHelper */,
+				090B36CFF6A88DA630281464 /* SafeUninstaller */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		019A248B3ED1F7CF15A25B8A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0FE4806DFDACF8E0E82421E /* com.safeuninstaller.UninstallerHelper.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		107EAD32356777E6615A721A /* Embed Helper Daemon */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Helper Daemon";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nHELPER_SRC=\"${BUILT_PRODUCTS_DIR}/UninstallerHelper\"\nDEST_DIR=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Library/LaunchDaemons\"\nPLIST_SRC=\"${SRCROOT}/SafeUninstaller/Resources/com.safeuninstaller.UninstallerHelper.plist\"\nmkdir -p \"${DEST_DIR}\"\nif [ -f \"${HELPER_SRC}\" ]; then\n  cp -f \"${HELPER_SRC}\" \"${DEST_DIR}/UninstallerHelper\"\n  chmod 755 \"${DEST_DIR}/UninstallerHelper\"\nfi\nif [ -f \"${PLIST_SRC}\" ]; then\n  cp -f \"${PLIST_SRC}\" \"${DEST_DIR}/com.safeuninstaller.UninstallerHelper.plist\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1350340661D3FDBFF26B6326 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3F7088BA39FD4F005DAFF919 /* AppViewModel.swift in Sources */,
+				DA17702A44AA1EFE6055F8EC /* ApplicationViews.swift in Sources */,
+				C5267272413FE16B5173E1E5 /* ContentView.swift in Sources */,
+				7F39CA1B5B96225F15BF237C /* OrphanReportsPermissions.swift in Sources */,
+				17C514D2CBDC201842D93BED /* SafeUninstallerApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1B83D7BDB78421D0151B5F43 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AC2A2A199BF875DDDFD906E4 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A7FCEEC918C5BAA2FF851FC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31F6D66AE85830E04AD6FAA2 /* AppIdentity.swift in Sources */,
+				EB1B0548CF958AD0EB45766C /* AppInventoryScanner.swift in Sources */,
+				9F75014B3D571DCAE60CDD3B /* AttributionModels.swift in Sources */,
+				2C1B43F86D0EC612F4AE3E58 /* AuditReport.swift in Sources */,
+				AEE17FC2B9AB746ED9EEA6FF /* DiscoveredResource.swift in Sources */,
+				CD9DC4C3E3F8FFDAF3AF50CF /* HelperProtocol.swift in Sources */,
+				18AE34F230C0E5C7182B52E9 /* HelperXPCClient.swift in Sources */,
+				0109FB42F3E04FBCB24CEAE6 /* OrphanSearchEngine.swift in Sources */,
+				8572DB561597BFE76CA7E45B /* RemovalEngine.swift in Sources */,
+				81247EC00EBB33023A6CE7C9 /* ResourceAttributionEngine.swift in Sources */,
+				2B5DE6E6EE07004E8D043EF2 /* ResourceDiscoveryEngine.swift in Sources */,
+				75CD612FF207B033C453E1A9 /* SafetyDenylist.swift in Sources */,
+				4714CEF6811DBCB191806479 /* UninstallService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EEA4C59A4C3265ACB8CB65F4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75B2E71B5087CCD30D0B7BBF /* AttributionEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		126721CAF1C94C0CDFFABBAB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7837614A3FA0FE0063064341 /* UninstallerCore */;
+			targetProxy = 58E110A3CB0ADD4FCF75DBDF /* PBXContainerItemProxy */;
+		};
+		1724D6D2600CC755C5C3902C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7837614A3FA0FE0063064341 /* UninstallerCore */;
+			targetProxy = DADC22EF1930BE58E4518B05 /* PBXContainerItemProxy */;
+		};
+		B7FFDECCA61DB7DF5B9775DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B49F569383051F2C08B5CD9D /* UninstallerHelper */;
+			targetProxy = 61A322DFC395F0CD102F4D2C /* PBXContainerItemProxy */;
+		};
+		EF37A614FB6D3CCED4E1C9EF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7837614A3FA0FE0063064341 /* UninstallerCore */;
+			targetProxy = B9E74B5FB735EAE48F11CE7A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4511B050470EE85C79296D89 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SafeUninstaller/SafeUninstaller.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = SafeUninstaller/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.app;
+				PRODUCT_NAME = SafeUninstaller;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		4F3ECDED9D5E8C3184B7A947 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				INFOPLIST_FILE = UninstallerHelper/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.UninstallerHelper;
+				PRODUCT_NAME = UninstallerHelper;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		61FF6B989FD97FFA5D4390F4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.UninstallerCoreTests;
+				SDKROOT = macosx;
+				TEST_HOST = "";
+			};
+			name = Release;
+		};
+		7D58DFAF4D150A8E1BA80AC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				INFOPLIST_FILE = UninstallerHelper/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.UninstallerHelper;
+				PRODUCT_NAME = UninstallerHelper;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		942CD9E9FBFFA98B10A1320F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SafeUninstaller/SafeUninstaller.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = SafeUninstaller/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.app;
+				PRODUCT_NAME = SafeUninstaller;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		AAE91529103E0E407D05A28A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.UninstallerCore;
+				PRODUCT_NAME = UninstallerCore;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		D4105D611D09F1ECE524BF74 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.UninstallerCore;
+				PRODUCT_NAME = UninstallerCore;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		D5CAB9714C1EFBB41F82C747 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		E389591C5768FB62BB90A6AE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.safeuninstaller.UninstallerCoreTests;
+				SDKROOT = macosx;
+				TEST_HOST = "";
+			};
+			name = Debug;
+		};
+		ED91C25F029318318B6D398B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3B4A09FFDB533A65BF857633 /* Build configuration list for PBXNativeTarget "UninstallerCore" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAE91529103E0E407D05A28A /* Debug */,
+				D4105D611D09F1ECE524BF74 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		451BE500E3AA1F82BF9FADE2 /* Build configuration list for PBXNativeTarget "UninstallerCoreTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E389591C5768FB62BB90A6AE /* Debug */,
+				61FF6B989FD97FFA5D4390F4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B782F5A6D42DC42453C13497 /* Build configuration list for PBXNativeTarget "SafeUninstaller" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				942CD9E9FBFFA98B10A1320F /* Debug */,
+				4511B050470EE85C79296D89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D2058C436561CCF8451C1974 /* Build configuration list for PBXNativeTarget "UninstallerHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F3ECDED9D5E8C3184B7A947 /* Debug */,
+				7D58DFAF4D150A8E1BA80AC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EA267AC13AD962E5181ABC62 /* Build configuration list for PBXProject "SafeUninstaller" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D5CAB9714C1EFBB41F82C747 /* Debug */,
+				ED91C25F029318318B6D398B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8C1B46B49D344B34AAFD0E1C /* Project object */;
+}
