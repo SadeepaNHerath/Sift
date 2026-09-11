@@ -1,4 +1,7 @@
 import XCTest
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
 @testable import UninstallerCore
 
 final class StorageToolkitTests: XCTestCase {
@@ -42,7 +45,7 @@ final class StorageToolkitTests: XCTestCase {
         try writeFile(at: bigDoc, size: 200_000)
 
         let scanner = LargeFileScanner(denylist: permissiveDenylist)
-        let results = scanner.scan(roots: [downloads], minimumBytes: 100_000, maxFiles: 100)
+        let results = scanner.scan(roots: [downloads], minimumBytes: 100_000, maxFiles: 100, preferSpotlight: false)
         XCTAssertEqual(results.count, 2, "Expected 2 large files, got \(results.map(\.displayName))")
         XCTAssertTrue(results.contains { standardized($0.path) == standardized(big.path) && $0.isVideo })
         XCTAssertTrue(results.contains { standardized($0.path) == standardized(bigDoc.path) && !$0.isVideo })
@@ -105,5 +108,107 @@ final class StorageToolkitTests: XCTestCase {
         XCTAssertTrue(LargeFileScanner.isVideoPath("/tmp/a.MOV"))
         XCTAssertTrue(LargeFileScanner.isVideoPath("/tmp/a.mp4"))
         XCTAssertFalse(LargeFileScanner.isVideoPath("/tmp/a.pdf"))
+        XCTAssertTrue(LargeFileScanner.isImagePath("/tmp/a.HEIC"))
+        XCTAssertTrue(LargeFileScanner.isImagePath("/tmp/a.png"))
+        XCTAssertFalse(LargeFileScanner.isImagePath("/tmp/a.mov"))
+    }
+
+    func testLargeFileScannerFileManagerFallback() throws {
+        let downloads = tempRoot.appendingPathComponent("Downloads")
+        try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true)
+        let big = downloads.appendingPathComponent("photo.png")
+        try writeFile(at: big, size: 150_000)
+
+        let scanner = LargeFileScanner(denylist: permissiveDenylist)
+        let results = scanner.scan(
+            roots: [downloads],
+            minimumBytes: 100_000,
+            maxFiles: 100,
+            preferSpotlight: false
+        )
+        XCTAssertEqual(results.count, 1)
+        XCTAssertTrue(results[0].isImage)
+        XCTAssertFalse(results[0].isVideo)
+    }
+
+    func testImageCompressorRoundTrip() throws {
+        let sourceURL = try writeLargeJPEG(named: "sample.jpg", width: 800, height: 600)
+        let originalSize = try XCTUnwrap(
+            (try? sourceURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
+        )
+        XCTAssertGreaterThan(originalSize, 50_000)
+
+        let compressor = ImageCompressor(fileManager: .default, jpegQuality: 0.4, heicQuality: 0.4)
+        let result = compressor.compress(path: sourceURL.path)
+
+        XCTAssertTrue(result.success, result.errorMessage ?? "unknown")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: result.outputPath))
+        XCTAssertLessThan(result.compressedBytes, result.originalBytes)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sourceURL.path), "Original should be in Trash")
+    }
+
+    func testCLICleanupMissingBinaryDoesNotCrash() {
+        let runner = CLICleanupRunner(pathResolver: { _ in nil })
+        for tool in CLICleanupRunner.ToolID.allCases {
+            let result = runner.run(tool)
+            XCTAssertFalse(result.success)
+            XCTAssertTrue(
+                result.summary.lowercased().contains("not installed") || result.summary.lowercased().contains("path"),
+                result.summary
+            )
+        }
+        let actions = runner.availableActions()
+        XCTAssertEqual(actions.count, 3)
+        XCTAssertTrue(actions.allSatisfy { !$0.isAvailable })
+    }
+
+    func testVideoCompressionResultSavingsPercent() {
+        let result = VideoCompressionResult(
+            originalPath: "/a",
+            outputPath: "/b",
+            originalBytes: 1000,
+            compressedBytes: 250,
+            success: true
+        )
+        XCTAssertEqual(result.savedBytes, 750)
+        XCTAssertEqual(result.savedPercent, 75)
+    }
+
+    private func writeLargeJPEG(named name: String, width: Int, height: Int) throws -> URL {
+        let url = tempRoot.appendingPathComponent(name)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        var state: UInt64 = 0xC0FFEE
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            state = state &* 6364136223846793005 &+ 1
+            let v = UInt8(truncatingIfNeeded: state >> 56)
+            pixels[i] = v
+            pixels[i + 1] = UInt8(truncatingIfNeeded: state >> 48)
+            pixels[i + 2] = UInt8(truncatingIfNeeded: state >> 40)
+            pixels[i + 3] = 255
+        }
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ), let image = context.makeImage() else {
+            throw NSError(domain: "StorageToolkitTests", code: 1)
+        }
+        guard let destination = CGImageDestinationCreateWithURL(
+            url as CFURL,
+            UTType.jpeg.identifier as CFString,
+            1,
+            nil
+        ) else {
+            throw NSError(domain: "StorageToolkitTests", code: 2)
+        }
+        let options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 1.0]
+        CGImageDestinationAddImage(destination, image, options as CFDictionary)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        return url
     }
 }

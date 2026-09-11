@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0109FB42F3E04FBCB24CEAE6 /* OrphanSearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8F0DA843E47CAE3FAC5F82 /* OrphanSearchEngine.swift */; };
+		0248E7F51F6EA3BEB775E30E /* ImageCompressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D43CF2DD366DA0F24C280669 /* ImageCompressor.swift */; };
 		17C514D2CBDC201842D93BED /* SafeUninstallerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3157B2164DF854AA07E6E4D /* SafeUninstallerApp.swift */; };
 		18AE34F230C0E5C7182B52E9 /* HelperXPCClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B07428EE7FB11AF203161E /* HelperXPCClient.swift */; };
 		2B5DE6E6EE07004E8D043EF2 /* ResourceDiscoveryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE18F3E5370639A6A0C49E31 /* ResourceDiscoveryEngine.swift */; };
@@ -21,6 +22,7 @@
 		6EDA1EB07A9449877C6F62BA /* UninstallerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		75B2E71B5087CCD30D0B7BBF /* AttributionEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2894E3E234EF7E23C206952 /* AttributionEngineTests.swift */; };
 		75CD612FF207B033C453E1A9 /* SafetyDenylist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03364CB7BB67A060184BAA09 /* SafetyDenylist.swift */; };
+		7B534231FDDD5DC64AFC1303 /* CLICleanupRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E56B879A7857B13EC563C3 /* CLICleanupRunner.swift */; };
 		7C6071944342FC92EE83B781 /* UninstallerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; };
 		7F39CA1B5B96225F15BF237C /* OrphanReportsPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53C848A5F48450B1D302839E /* OrphanReportsPermissions.swift */; };
 		81247EC00EBB33023A6CE7C9 /* ResourceAttributionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56AF6C4FD69D952365D97FA6 /* ResourceAttributionEngine.swift */; };
@@ -127,7 +129,9 @@
 		CB8F0DA843E47CAE3FAC5F82 /* OrphanSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrphanSearchEngine.swift; sourceTree = "<group>"; };
 		CBBCB88BDDD79423471CD2CE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		CDF919BE4AD619BB8209E748 /* VideoCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoCompressor.swift; sourceTree = "<group>"; };
+		D43CF2DD366DA0F24C280669 /* ImageCompressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCompressor.swift; sourceTree = "<group>"; };
 		D4EF7E8FC10DD8455E02DA14 /* DevDependencyScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevDependencyScanner.swift; sourceTree = "<group>"; };
+		E0E56B879A7857B13EC563C3 /* CLICleanupRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLICleanupRunner.swift; sourceTree = "<group>"; };
 		E4AE566426BFD686C809CD1E /* StorageModuleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageModuleViews.swift; sourceTree = "<group>"; };
 		EB63AC02A6A4D433907164C1 /* SafeUninstaller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SafeUninstaller.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE18F3E5370639A6A0C49E31 /* ResourceDiscoveryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceDiscoveryEngine.swift; sourceTree = "<group>"; };
@@ -222,7 +226,9 @@
 			isa = PBXGroup;
 			children = (
 				08DB0A38BFFB354A98A7CEAC /* CacheCleaner.swift */,
+				E0E56B879A7857B13EC563C3 /* CLICleanupRunner.swift */,
 				D4EF7E8FC10DD8455E02DA14 /* DevDependencyScanner.swift */,
+				D43CF2DD366DA0F24C280669 /* ImageCompressor.swift */,
 				2EC43C7DADFC3DDB999FF221 /* LargeFileScanner.swift */,
 				477C3150815E4DCC42CA92EB /* StorageModels.swift */,
 				70D9F3C8AF86A0D91E7DCF8D /* StorageOverviewEngine.swift */,
@@ -538,11 +544,13 @@
 				EB1B0548CF958AD0EB45766C /* AppInventoryScanner.swift in Sources */,
 				9F75014B3D571DCAE60CDD3B /* AttributionModels.swift in Sources */,
 				2C1B43F86D0EC612F4AE3E58 /* AuditReport.swift in Sources */,
+				7B534231FDDD5DC64AFC1303 /* CLICleanupRunner.swift in Sources */,
 				F19FE3107827D2C58EDA188E /* CacheCleaner.swift in Sources */,
 				84D8C0E6AF3A60B36A373BE9 /* DevDependencyScanner.swift in Sources */,
 				AEE17FC2B9AB746ED9EEA6FF /* DiscoveredResource.swift in Sources */,
 				CD9DC4C3E3F8FFDAF3AF50CF /* HelperProtocol.swift in Sources */,
 				18AE34F230C0E5C7182B52E9 /* HelperXPCClient.swift in Sources */,
+				0248E7F51F6EA3BEB775E30E /* ImageCompressor.swift in Sources */,
 				D323BF01437D83719ACA5E4D /* LargeFileScanner.swift in Sources */,
 				0109FB42F3E04FBCB24CEAE6 /* OrphanSearchEngine.swift in Sources */,
 				448AEB47437AE5728D897060 /* PathAllowlist.swift in Sources */,

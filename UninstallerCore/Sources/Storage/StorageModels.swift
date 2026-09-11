@@ -88,6 +88,7 @@ public struct LargeFileItem: Identifiable, Hashable, Sendable {
     public let byteSize: Int64
     public let modifiedAt: Date?
     public let isVideo: Bool
+    public let isImage: Bool
     public var isSelected: Bool
 
     public init(
@@ -95,12 +96,14 @@ public struct LargeFileItem: Identifiable, Hashable, Sendable {
         byteSize: Int64,
         modifiedAt: Date? = nil,
         isVideo: Bool,
+        isImage: Bool = false,
         isSelected: Bool = false
     ) {
         self.path = path
         self.byteSize = byteSize
         self.modifiedAt = modifiedAt
         self.isVideo = isVideo
+        self.isImage = isImage
         self.isSelected = isSelected
     }
 
@@ -110,6 +113,32 @@ public struct LargeFileItem: Identifiable, Hashable, Sendable {
     }
     public var fileExtension: String {
         (path as NSString).pathExtension.lowercased()
+    }
+
+    public var isCompressible: Bool { isVideo || isImage }
+}
+
+public enum VideoQualityPreset: String, Codable, Sendable, CaseIterable, Identifiable {
+    case smaller
+    case balanced
+    case higherQuality
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .smaller: return "Smaller"
+        case .balanced: return "Balanced"
+        case .higherQuality: return "Higher quality"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .smaller: return "1080p HEVC / medium — max savings"
+        case .balanced: return "HEVC high quality — good size/quality"
+        case .higherQuality: return "HEVC highest / 4K when source allows"
+        }
     }
 }
 
@@ -195,6 +224,7 @@ public struct VideoCompressionResult: Sendable {
     public let compressedBytes: Int64
     public let success: Bool
     public let errorMessage: String?
+    public let wasCancelled: Bool
 
     public init(
         originalPath: String,
@@ -202,7 +232,8 @@ public struct VideoCompressionResult: Sendable {
         originalBytes: Int64,
         compressedBytes: Int64,
         success: Bool,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        wasCancelled: Bool = false
     ) {
         self.originalPath = originalPath
         self.outputPath = outputPath
@@ -210,7 +241,40 @@ public struct VideoCompressionResult: Sendable {
         self.compressedBytes = compressedBytes
         self.success = success
         self.errorMessage = errorMessage
+        self.wasCancelled = wasCancelled
     }
 
     public var savedBytes: Int64 { max(0, originalBytes - compressedBytes) }
+
+    public var savedPercent: Int {
+        guard originalBytes > 0 else { return 0 }
+        return Int((Double(savedBytes) / Double(originalBytes)) * 100.0)
+    }
+}
+
+public struct CLICleanupAction: Identifiable, Sendable, Hashable {
+    public var id: String { toolID }
+    public let toolID: String
+    public let title: String
+    public let detail: String
+    public let isAvailable: Bool
+
+    public init(toolID: String, title: String, detail: String, isAvailable: Bool) {
+        self.toolID = toolID
+        self.title = title
+        self.detail = detail
+        self.isAvailable = isAvailable
+    }
+}
+
+public struct CLICleanupResult: Sendable {
+    public let toolID: String
+    public let success: Bool
+    public let summary: String
+
+    public init(toolID: String, success: Bool, summary: String) {
+        self.toolID = toolID
+        self.success = success
+        self.summary = summary
+    }
 }
