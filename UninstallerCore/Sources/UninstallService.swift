@@ -12,8 +12,10 @@ public final class UninstallService: @unchecked Sendable {
     public let storageOverview: StorageOverviewEngine
     public let largeFiles: LargeFileScanner
     public let videoCompressor: VideoCompressor
+    public let imageCompressor: ImageCompressor
     public let caches: CacheCleaner
     public let devDependencies: DevDependencyScanner
+    public let cliCleanup: CLICleanupRunner
 
     public init(
         inventory: AppInventoryScanner = .shared,
@@ -24,8 +26,10 @@ public final class UninstallService: @unchecked Sendable {
         storageOverview: StorageOverviewEngine = .shared,
         largeFiles: LargeFileScanner = .shared,
         videoCompressor: VideoCompressor = .shared,
+        imageCompressor: ImageCompressor = .shared,
         caches: CacheCleaner = .shared,
-        devDependencies: DevDependencyScanner = .shared
+        devDependencies: DevDependencyScanner = .shared,
+        cliCleanup: CLICleanupRunner = .shared
     ) {
         self.inventory = inventory
         self.discovery = discovery
@@ -35,8 +39,10 @@ public final class UninstallService: @unchecked Sendable {
         self.storageOverview = storageOverview
         self.largeFiles = largeFiles
         self.videoCompressor = videoCompressor
+        self.imageCompressor = imageCompressor
         self.caches = caches
         self.devDependencies = devDependencies
+        self.cliCleanup = cliCleanup
     }
 
     public func listApplications() -> [AppIdentity] {

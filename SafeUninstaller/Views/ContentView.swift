@@ -127,9 +127,18 @@ struct ContentView: View {
             ConfirmRemovalSheet()
                 .environmentObject(model)
         }
+        .sheet(isPresented: $model.showCLICleanupConfirm) {
+            CLICleanupConfirmSheet()
+                .environmentObject(model)
+        }
         .sheet(isPresented: $model.showSetupSheet) {
             SetupSheet()
                 .environmentObject(model)
+        }
+        .onChange(of: model.sidebar) { _, newValue in
+            if newValue != .largeFiles {
+                model.cancelCompression()
+            }
         }
     }
 }

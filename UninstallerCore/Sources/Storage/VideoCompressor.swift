@@ -6,6 +6,8 @@ public final class VideoCompressor: @unchecked Sendable {
     public static let shared = VideoCompressor()
 
     private let fileManager: FileManager
+    private let lock = NSLock()
+    private var activeSession: AVAssetExportSession?
 
     public init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
@@ -17,9 +19,18 @@ public final class VideoCompressor: @unchecked Sendable {
         case finished(VideoCompressionResult)
     }
 
+    /// Cancel an in-flight export (e.g. user navigates away).
+    public func cancelActiveExport() {
+        lock.lock()
+        let session = activeSession
+        lock.unlock()
+        session?.cancelExport()
+    }
+
     /// Compress one video. On success: original → Trash, compressed file takes its place.
     public func compress(
         path: String,
+        quality: VideoQualityPreset = .balanced,
         progress: ((Double) -> Void)? = nil
     ) async -> VideoCompressionResult {
         let url = URL(fileURLWithPath: path)
@@ -37,7 +48,7 @@ public final class VideoCompressor: @unchecked Sendable {
         }
 
         let asset = AVURLAsset(url: url)
-        let preset = await preferredPreset(for: asset)
+        let preset = await preferredPreset(for: asset, quality: quality)
         guard let session = AVAssetExportSession(asset: asset, presetName: preset) else {
             return VideoCompressionResult(
                 originalPath: path,
@@ -47,6 +58,15 @@ public final class VideoCompressor: @unchecked Sendable {
                 success: false,
                 errorMessage: "Could not create export session"
             )
+        }
+
+        lock.lock()
+        activeSession = session
+        lock.unlock()
+        defer {
+            lock.lock()
+            if activeSession === session { activeSession = nil }
+            lock.unlock()
         }
 
         let tempDir = fileManager.temporaryDirectory.appendingPathComponent("SafeUninstallerVideo", isDirectory: true)
@@ -74,7 +94,20 @@ public final class VideoCompressor: @unchecked Sendable {
             }
         }
         progressTask.cancel()
-        progress?(1.0)
+        progress?(session.status == .cancelled ? Double(session.progress) : 1.0)
+
+        if session.status == .cancelled || Task.isCancelled {
+            try? fileManager.removeItem(at: tempOut)
+            return VideoCompressionResult(
+                originalPath: path,
+                outputPath: "",
+                originalBytes: originalSize,
+                compressedBytes: 0,
+                success: false,
+                errorMessage: "Cancelled",
+                wasCancelled: true
+            )
+        }
 
         guard session.status == .completed, fileManager.fileExists(atPath: tempOut.path) else {
             let message = session.error?.localizedDescription ?? "Export failed"
@@ -102,7 +135,6 @@ public final class VideoCompressor: @unchecked Sendable {
             )
         }
 
-        // Destination: same directory, stem + _compressed + ext (then rename over after trash)
         let parent = url.deletingLastPathComponent()
         let stem = url.deletingPathExtension().lastPathComponent
         let finalURL = parent.appendingPathComponent("\(stem).\(outExt)")
@@ -112,7 +144,6 @@ public final class VideoCompressor: @unchecked Sendable {
             try fileManager.trashItem(at: url, resultingItemURL: &resulting)
 
             if fileManager.fileExists(atPath: finalURL.path) && finalURL.path != path {
-                // Unlikely collision with different extension — use unique name
                 let alt = parent.appendingPathComponent("\(stem)_compressed.\(outExt)")
                 try fileManager.moveItem(at: tempOut, to: alt)
                 return VideoCompressionResult(
@@ -145,13 +176,41 @@ public final class VideoCompressor: @unchecked Sendable {
         }
     }
 
-    private func preferredPreset(for asset: AVAsset) async -> String {
-        let hevc = AVAssetExportPresetHEVCHighestQuality
-        let h264 = AVAssetExportPreset1920x1080
+    private func preferredPreset(for asset: AVAsset, quality: VideoQualityPreset) async -> String {
         let compatible = AVAssetExportSession.exportPresets(compatibleWith: asset)
-        if compatible.contains(hevc) { return hevc }
-        if compatible.contains(h264) { return h264 }
-        if compatible.contains(AVAssetExportPresetMediumQuality) { return AVAssetExportPresetMediumQuality }
+
+        let candidates: [String]
+        switch quality {
+        case .smaller:
+            candidates = [
+                AVAssetExportPresetHEVC1920x1080,
+                AVAssetExportPresetMediumQuality,
+                AVAssetExportPreset1280x720,
+                AVAssetExportPresetLowQuality
+            ]
+        case .balanced:
+            candidates = [
+                AVAssetExportPresetHEVCHighestQuality,
+                AVAssetExportPreset1920x1080,
+                AVAssetExportPresetHEVC1920x1080,
+                AVAssetExportPresetMediumQuality
+            ]
+        case .higherQuality:
+            candidates = [
+                AVAssetExportPresetHEVCHighestQuality,
+                AVAssetExportPresetHEVC3840x2160,
+                AVAssetExportPreset3840x2160,
+                AVAssetExportPresetHighestQuality,
+                AVAssetExportPreset1920x1080
+            ]
+        }
+
+        for name in candidates where compatible.contains(name) {
+            return name
+        }
+        if compatible.contains(AVAssetExportPresetMediumQuality) {
+            return AVAssetExportPresetMediumQuality
+        }
         return AVAssetExportPresetPassthrough
     }
 }

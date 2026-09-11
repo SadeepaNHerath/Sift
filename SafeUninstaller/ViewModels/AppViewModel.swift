@@ -63,6 +63,13 @@ final class AppViewModel: ObservableObject {
     @Published var isScanningDev = false
     @Published var compressingPath: String?
     @Published var compressionProgress: Double = 0
+    @Published var videoQualityPreset: VideoQualityPreset = .balanced
+    @Published var lastCompressionSavings: String?
+    @Published var cliCleanupActions: [CLICleanupAction] = []
+    @Published var pendingCLIAction: CLICleanupAction?
+    @Published var showCLICleanupConfirm = false
+    @Published var isRunningCLICleanup = false
+    @Published var cliCleanupSummary: String?
     @Published var showEmptyTrashConfirm = false
 
     @Published var isListingApps = false
@@ -157,7 +164,9 @@ final class AppViewModel: ObservableObject {
         case .orphans:
             return selectedOrphans.prefix(12).map { ($0.resource.path, $0.confidence.displayName) }
         case .largeFiles:
-            return selectedLargeFiles.prefix(12).map { ($0.path, $0.isVideo ? "Video" : "File") }
+            return selectedLargeFiles.prefix(12).map {
+                ($0.path, $0.isVideo ? "Video" : ($0.isImage ? "Image" : "File"))
+            }
         case .caches:
             return selectedCaches.prefix(12).map { ($0.path, "Cache") }
         case .developer:
@@ -290,9 +299,11 @@ final class AppViewModel: ObservableObject {
         guard item.isVideo else { return }
         compressingPath = item.path
         compressionProgress = 0
+        lastCompressionSavings = nil
         statusMessage = "Compressing \(item.displayName)…"
+        let quality = videoQualityPreset
         Task {
-            let result = await service.videoCompressor.compress(path: item.path) { fraction in
+            let result = await service.videoCompressor.compress(path: item.path, quality: quality) { fraction in
                 Task { @MainActor in
                     self.compressionProgress = fraction
                 }
@@ -300,15 +311,95 @@ final class AppViewModel: ObservableObject {
             await MainActor.run {
                 self.compressingPath = nil
                 self.compressionProgress = 0
+                if result.wasCancelled {
+                    self.statusMessage = "Compression cancelled"
+                    return
+                }
                 if result.success {
+                    let before = ByteCountFormatter.string(fromByteCount: result.originalBytes, countStyle: .file)
+                    let after = ByteCountFormatter.string(fromByteCount: result.compressedBytes, countStyle: .file)
                     let saved = ByteCountFormatter.string(fromByteCount: result.savedBytes, countStyle: .file)
-                    self.showToast("Compressed — saved ~\(saved). Original is in Trash.")
+                    self.lastCompressionSavings = "\(before) → \(after) (−\(result.savedPercent)%, saved \(saved))"
+                    self.showToast("Compressed — \(before) → \(after) (−\(result.savedPercent)%). Original in Trash.")
                     self.scanLargeFiles()
                     self.refreshStorageOverview()
+                    self.statusMessage = "Compression complete"
                 } else {
                     self.errorMessage = result.errorMessage ?? "Compression failed"
+                    self.statusMessage = "Compression failed"
                 }
-                self.statusMessage = result.success ? "Compression complete" : "Compression failed"
+            }
+        }
+    }
+
+    func compressImage(_ item: LargeFileItem) {
+        guard item.isImage else { return }
+        compressingPath = item.path
+        compressionProgress = 0
+        lastCompressionSavings = nil
+        statusMessage = "Compressing \(item.displayName)…"
+        Task.detached(priority: .userInitiated) {
+            let result = UninstallService.shared.imageCompressor.compress(path: item.path)
+            await MainActor.run {
+                self.compressingPath = nil
+                self.compressionProgress = 0
+                if result.success {
+                    let before = ByteCountFormatter.string(fromByteCount: result.originalBytes, countStyle: .file)
+                    let after = ByteCountFormatter.string(fromByteCount: result.compressedBytes, countStyle: .file)
+                    self.lastCompressionSavings = "\(before) → \(after) (−\(result.savedPercent)%)"
+                    self.showToast("Image compressed — \(before) → \(after). Original in Trash.")
+                    self.scanLargeFiles()
+                    self.refreshStorageOverview()
+                    self.statusMessage = "Compression complete"
+                } else {
+                    self.errorMessage = result.errorMessage ?? "Image compression failed"
+                    self.statusMessage = "Compression failed"
+                }
+            }
+        }
+    }
+
+    func cancelCompression() {
+        service.videoCompressor.cancelActiveExport()
+        if compressingPath != nil {
+            compressingPath = nil
+            compressionProgress = 0
+            statusMessage = "Compression cancelled"
+        }
+    }
+
+    func refreshCLICleanupActions() {
+        cliCleanupActions = service.cliCleanup.availableActions()
+    }
+
+    func requestCLICleanup(_ action: CLICleanupAction) {
+        guard action.isAvailable else { return }
+        pendingCLIAction = action
+        showCLICleanupConfirm = true
+    }
+
+    func performCLICleanup() {
+        guard let action = pendingCLIAction else { return }
+        showCLICleanupConfirm = false
+        isRunningCLICleanup = true
+        statusMessage = "Running \(action.title)…"
+        let toolID = action.toolID
+        Task.detached(priority: .userInitiated) {
+            let result = UninstallService.shared.cliCleanup.run(toolID)
+            await MainActor.run {
+                self.isRunningCLICleanup = false
+                self.pendingCLIAction = nil
+                self.cliCleanupSummary = result.summary
+                if result.success {
+                    self.showToast("\(action.title) finished")
+                    self.statusMessage = "CLI cleanup complete"
+                } else {
+                    self.errorMessage = result.summary
+                    self.statusMessage = "CLI cleanup failed"
+                }
+                self.scanDevDependencies()
+                self.refreshStorageOverview()
+                self.refreshCLICleanupActions()
             }
         }
     }
@@ -376,6 +467,7 @@ final class AppViewModel: ObservableObject {
                 self.devItems = found
                 self.hasScannedDev = true
                 self.isScanningDev = false
+                self.refreshCLICleanupActions()
                 self.statusMessage = "\(found.count) developer items"
             }
         }
