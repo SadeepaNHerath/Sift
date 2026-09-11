@@ -1,0 +1,11 @@
+.DS_Store
+DerivedData/
+*.xcuserdata
+xcuserdata/
+*.xcworkspace/xcuserdata/
+build/
+.swiftpm/
+.idea/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
