@@ -139,7 +139,7 @@ struct SetupSheet: View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Welcome to SafeUninstaller")
                 .font(.title2.bold())
-            Text("A few permissions help the app find leftovers accurately. Nothing is deleted until you review and confirm.")
+            Text("Ad-hoc / unsigned builds are fully supported for cleaning your personal Library. Nothing is deleted until you review and confirm.")
                 .foregroundStyle(.secondary)
 
             GroupBox("Full Disk Access") {
@@ -166,7 +166,7 @@ struct SetupSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(model.helperStatus)
                         .fontWeight(.medium)
-                    Text("Only required for root-owned files under /Library. User Library cleanup works without it.")
+                    Text("Only needed for root-owned files under /Library. Personal ~/Library cleanup does not need this helper.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     HStack {
@@ -175,7 +175,7 @@ struct SetupSheet: View {
                         Button("Login Items…") { model.openLoginItemsSettings() }
                     }
                     if !model.canRegisterHelper {
-                        Text("Requires Developer ID / Apple Development signing with a Team ID.")
+                        Text("Needs a paid Apple Developer ID certificate. Without it, SafeUninstaller still cleans user Library data normally.")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }

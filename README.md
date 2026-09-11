@@ -2,17 +2,71 @@
 
 Intelligent, safety-first application uninstallation for macOS.
 
-**Distribution:** Developer ID + notarization (not Mac App Store — Full Disk Access and a privileged helper are incompatible with App Sandbox).
+**You do not need a paid Apple Developer account or the Mac App Store** to build, share, or install this app. Ad-hoc signed builds clean personal `~/Library` leftovers. A paid Developer ID is only required later if you want Gatekeeper-silent distribution or the optional `/Library` privileged helper.
+
+## Install without App Store
+
+### Option A — Download from GitHub Releases
+
+1. Build a zip (see [Package a release](#package-a-release)) and upload `SafeUninstaller-1.0.0.zip` to a GitHub Release.
+2. Users download the zip, unzip, and move `SafeUninstaller.app` into **Applications** or **~/Applications**.
+3. First launch: if macOS says the app can’t be opened, **Right-click → Open → Open**.
+4. Grant **Full Disk Access**: System Settings → Privacy & Security → Full Disk Access → enable SafeUninstaller.
+
+### Option B — Terminal install
+
+After the Release exists and this repo is on GitHub:
+
+```bash
+REPO=YOUR_GITHUB_USER/YOUR_REPO \
+  curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USER/YOUR_REPO/main/Scripts/install.sh | bash
+```
+
+Or install a specific asset URL:
+
+```bash
+INSTALL_ZIP_URL=https://github.com/YOUR_GITHUB_USER/YOUR_REPO/releases/download/v1.0.0/SafeUninstaller-1.0.0.zip \
+  ./Scripts/install.sh
+```
+
+The installer places the app in `~/Applications`, clears the quarantine attribute, and opens it.
+
+### What works without a paid Apple account
+
+| Capability | Supported |
+|---|---|
+| Scan apps + clean `~/Library` leftovers | Yes |
+| Move items to Trash + audit reports | Yes |
+| Full Disk Access | Yes (user grants it) |
+| Double-click with no Gatekeeper warning | No — users Right-click → Open once (or use `install.sh`) |
+| Privileged helper for `/Library` | No — needs Developer ID |
+
+## Package a release
+
+On a Mac with Xcode:
+
+```bash
+cd "Mac Issue"   # or your clone path
+chmod +x Scripts/package-release.sh Scripts/install.sh
+./Scripts/package-release.sh
+```
+
+Outputs:
+
+- `dist/SafeUninstaller-1.0.0.zip`
+- `dist/SafeUninstaller-1.0.0.zip.sha256`
+
+Create a GitHub Release (e.g. tag `v1.0.0`), upload both files, and share the download or terminal one-liner above.
 
 ## Features
 
 - Multi-signal **application resource attribution** with High / Medium / Low confidence and evidence badges
 - Orphaned-file (“Leftovers”) search for already-removed apps
 - Trash-only removal, confirmation sheets, audit reports (`~/Library/Application Support/SafeUninstaller/Reports`, mode `0700`)
-- Optional privileged helper for `/Library` (allowlisted paths only; XPC client code-signing checks)
+- Optional privileged helper for `/Library` (only when Developer ID–signed)
 - First-run Setup for Full Disk Access
 
-## Build
+## Build (development)
 
 ```bash
 cd "Mac Issue"
@@ -21,26 +75,22 @@ xcodebuild -scheme SafeUninstaller -configuration Debug build
 xcodebuild -scheme UninstallerCore -destination 'platform=macOS' test
 ```
 
-Open `SafeUninstaller.xcodeproj` in Xcode. For local Debug builds, ad-hoc signing is fine for **user-domain** cleanup. Privileged helper registration requires a real Team ID.
+Open `SafeUninstaller.xcodeproj` in Xcode for day-to-day Debug / ad-hoc runs.
 
 ## Permissions
 
-1. **Full Disk Access** — System Settings → Privacy & Security → Full Disk Access → enable SafeUninstaller. Needed for complete Library scans. The app probes `~/Library/Application Support/com.apple.TCC` (or Shortcuts) — not Mail/Safari.
-2. **Privileged Helper (optional)** — System Settings → General → Login Items. Only for root-owned `/Library` leftovers. Disabled in the UI until the app is signed with a Team ID.
+1. **Full Disk Access** — System Settings → Privacy & Security → Full Disk Access. Needed for complete Library scans. The app probes `~/Library/Application Support/com.apple.TCC` (or Shortcuts) — not Mail/Safari.
+2. **Privileged Helper (optional)** — only for root-owned `/Library` leftovers. Unavailable without a paid Developer ID certificate; user-Library cleanup does not need it.
 
-## Signing & notarization (release)
+## Optional later: Developer ID + notarization
 
-1. Set your team in Xcode or `project.yml` (`DEVELOPMENT_TEAM`).
-2. Sign **SafeUninstaller**, **UninstallerCore.framework**, and embedded **UninstallerHelper** with the same Developer ID Application identity (hardened runtime).
-3. Archive / export the `.app`.
-4. Run:
+If you join the Apple Developer Program later:
 
-```bash
-chmod +x Scripts/notarize.sh
-./Scripts/notarize.sh /path/to/SafeUninstaller.app
-```
+1. Set `DEVELOPMENT_TEAM` in `project.yml` / Xcode.
+2. Sign app, framework, and helper with **Developer ID Application**.
+3. Export the `.app` and run `./Scripts/notarize.sh /path/to/SafeUninstaller.app`.
 
-See comments in `Scripts/notarize.sh` for `notarytool` credential setup.
+Until then, use the GitHub zip + `install.sh` path above.
 
 ## Architecture
 
@@ -48,19 +98,17 @@ See comments in `Scripts/notarize.sh` for `notarytool` credential setup.
 |--------|------|
 | `UninstallerCore` | Identity, discovery, attribution, orphans, removal, XPC client |
 | `SafeUninstaller` | SwiftUI UI |
-| `UninstallerHelper` | Standalone privileged daemon (no framework link) |
+| `UninstallerHelper` | Standalone privileged daemon (disabled unless properly signed) |
 
 ## Safety model
 
 - Hard denylist for SIP / `com.apple.*` / shared Library roots / `/usr`
-- Privileged helper uses a **strict allowlist** (LaunchAgents/Daemons, Application Support leaves, etc.)
+- Privileged helper uses a **strict allowlist** when enabled
 - High confidence pre-selected; Medium/Low opt-in; Low collapsed by default
-- Symlink leaves refused; launchd labels validated; helper XPC requires matching app code signature (DEBUG soft-fallback for ad-hoc)
+- Symlink leaves refused; launchd labels validated
 
 ## Tests
 
 ```bash
 xcodebuild -scheme UninstallerCore -destination 'platform=macOS' test
 ```
-
-Includes attribution fixtures and security allowlist / boundary / orphan-sibling tests.
