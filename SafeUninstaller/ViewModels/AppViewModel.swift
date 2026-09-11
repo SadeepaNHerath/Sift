@@ -8,20 +8,23 @@ import AppKit
 final class AppViewModel: ObservableObject {
     enum SidebarItem: String, CaseIterable, Identifiable {
         case applications = "Applications"
-        case orphans = "Orphaned Files"
-        case reports = "Reports"
-        case settings = "Permissions"
+        case leftovers = "Leftovers"
+        case history = "History"
 
         var id: String { rawValue }
 
         var systemImage: String {
             switch self {
             case .applications: return "square.grid.2x2"
-            case .orphans: return "doc.badge.questionmark"
-            case .reports: return "doc.text.magnifyingglass"
-            case .settings: return "lock.shield"
+            case .leftovers: return "doc.badge.questionmark"
+            case .history: return "clock"
             }
         }
+    }
+
+    enum ConfirmMode {
+        case uninstall
+        case orphans
     }
 
     @Published var sidebar: SidebarItem = .applications
@@ -30,20 +33,50 @@ final class AppViewModel: ObservableObject {
     @Published var analysis: AttributionResult?
     @Published var selectionOverrides: [String: Bool] = [:]
     @Published var orphans: [OrphanedResource] = []
+    @Published var selectedOrphanID: String?
+    @Published var hasScannedOrphans = false
     @Published var reports: [AuditReport] = []
-    @Published var isScanning = false
+    @Published var selectedReportID: UUID?
+
+    @Published var isListingApps = false
+    @Published var isAnalyzing = false
+    @Published var isScanningOrphans = false
     @Published var isRemoving = false
+
     @Published var statusMessage: String = ""
+    @Published var toastMessage: String?
     @Published var hasFDA = false
     @Published var helperStatus: String = "Unknown"
+    @Published var canRegisterHelper = false
     @Published var lastReport: AuditReport?
     @Published var showConfirmSheet = false
+    @Published var confirmMode: ConfirmMode = .uninstall
     @Published var errorMessage: String?
+    @Published var showSetupSheet = false
+    @Published var setupDismissed = false
+    @Published var isDropTargeted = false
+    @Published var lowConfidenceExpanded = false
 
     private let service = UninstallService.shared
+    private var analyzeTask: Task<Void, Never>?
+    private var analyzeGeneration = 0
+
+    private let setupDismissKey = "SafeUninstaller.setupDismissed"
 
     var selectedApp: AppIdentity? {
         apps.first { $0.id == selectedAppID }
+    }
+
+    var selectedOrphan: OrphanedResource? {
+        orphans.first { $0.id == selectedOrphanID }
+    }
+
+    var isBusy: Bool {
+        isListingApps || isAnalyzing || isScanningOrphans || isRemoving
+    }
+
+    var needsSetup: Bool {
+        !hasFDA && !setupDismissed
     }
 
     var displayedResources: [AttributedResource] {
@@ -65,62 +98,103 @@ final class AppViewModel: ObservableObject {
         displayedResources.filter { $0.isSelected && !$0.isDenied }.reduce(0) { $0 + $1.resource.byteSize }
     }
 
+    var selectedOrphans: [OrphanedResource] {
+        orphans.filter(\.isSelected)
+    }
+
+    var confirmPreviewItems: [(path: String, confidence: String)] {
+        switch confirmMode {
+        case .uninstall:
+            return displayedResources
+                .filter { $0.isSelected && !$0.isDenied }
+                .prefix(12)
+                .map { ($0.resource.path, $0.confidence.displayName) }
+        case .orphans:
+            return selectedOrphans
+                .prefix(12)
+                .map { ($0.resource.path, $0.confidence.displayName) }
+        }
+    }
+
     func bootstrap() {
         service.removal.privilegedClient = HelperXPCClient.shared
+        setupDismissed = UserDefaults.standard.bool(forKey: setupDismissKey)
         refreshPermissions()
         refreshApps()
         refreshReports()
+        if !hasFDA && !setupDismissed {
+            showSetupSheet = true
+        }
     }
 
     func refreshPermissions() {
         hasFDA = service.hasFullDiskAccess()
         helperStatus = HelperXPCClient.shared.registrationStatusDescription
+        canRegisterHelper = HelperXPCClient.shared.canRegisterHelper
+    }
+
+    func dismissSetup(permanently: Bool) {
+        showSetupSheet = false
+        if permanently {
+            setupDismissed = true
+            UserDefaults.standard.set(true, forKey: setupDismissKey)
+        }
     }
 
     func refreshApps() {
-        isScanning = true
+        isListingApps = true
         statusMessage = "Scanning Applications…"
-        DispatchQueue.global(qos: .userInitiated).async {
-            let list = self.service.listApplications()
+        Task.detached(priority: .userInitiated) {
+            let list = await MainActor.run { self.service }
+                .listApplications()
                 .filter { !$0.bundleIdentifier.lowercased().hasPrefix("com.apple.") }
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.apps = list
-                self.isScanning = false
-                self.statusMessage = "\(list.count) applications found"
+                self.isListingApps = false
+                self.statusMessage = "\(list.count) applications"
                 if self.selectedAppID == nil {
                     self.selectedAppID = list.first?.id
+                    self.analyzeSelected()
                 }
             }
         }
     }
 
     func analyzeSelected() {
-        guard let app = selectedApp else { return }
-        isScanning = true
+        guard let app = selectedApp else {
+            analysis = nil
+            return
+        }
+        analyzeGeneration += 1
+        let generation = analyzeGeneration
+        analyzeTask?.cancel()
+        isAnalyzing = true
         statusMessage = "Analyzing \(app.name)…"
         selectionOverrides = [:]
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.service.analyze(app: app, installedApps: self.apps)
-            DispatchQueue.main.async {
+        let appsSnapshot = apps
+        analyzeTask = Task.detached(priority: .userInitiated) {
+            let result = UninstallService.shared.analyze(app: app, installedApps: appsSnapshot)
+            await MainActor.run {
+                guard generation == self.analyzeGeneration else { return }
                 self.analysis = result
-                self.isScanning = false
-                self.statusMessage = "Found \(result.resources.count) related resources"
+                self.isAnalyzing = false
+                self.statusMessage = "\(result.resources.count) related resources"
             }
         }
     }
 
     func analyzeDroppedApp(url: URL) {
-        isScanning = true
+        isAnalyzing = true
         statusMessage = "Analyzing dropped app…"
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let result = self.service.analyze(appAt: url) else {
-                DispatchQueue.main.async {
-                    self.isScanning = false
+        Task.detached(priority: .userInitiated) {
+            guard let result = UninstallService.shared.analyze(appAt: url) else {
+                await MainActor.run {
+                    self.isAnalyzing = false
                     self.errorMessage = "Could not read application at \(url.path)"
                 }
                 return
             }
-            DispatchQueue.main.async {
+            await MainActor.run {
                 if !self.apps.contains(where: { $0.path == result.app.path }) {
                     self.apps.insert(result.app, at: 0)
                 }
@@ -128,8 +202,9 @@ final class AppViewModel: ObservableObject {
                 self.analysis = result
                 self.selectionOverrides = [:]
                 self.sidebar = .applications
-                self.isScanning = false
-                self.statusMessage = "Found \(result.resources.count) related resources"
+                self.isAnalyzing = false
+                self.statusMessage = "\(result.resources.count) related resources"
+                self.showToast("Ready to review \(result.app.name)")
             }
         }
     }
@@ -145,8 +220,15 @@ final class AppViewModel: ObservableObject {
             } else if let u = item as? URL {
                 url = u
             }
-            guard let url, url.pathExtension.lowercased() == "app" else { return }
             DispatchQueue.main.async {
+                guard let url else {
+                    self.errorMessage = "Could not read dropped item"
+                    return
+                }
+                guard url.pathExtension.lowercased() == "app" else {
+                    self.errorMessage = "Drop a macOS .app bundle to analyze it"
+                    return
+                }
                 self.analyzeDroppedApp(url: url)
             }
         }
@@ -158,14 +240,42 @@ final class AppViewModel: ObservableObject {
         selectionOverrides[resource.resource.path] = selected
     }
 
+    func selectAll(confidence: ConfidenceLevel, selected: Bool) {
+        for item in displayedResources where item.confidence == confidence && !item.isDenied {
+            selectionOverrides[item.resource.path] = selected
+        }
+    }
+
+    func selectOnlyHighConfidence() {
+        for item in displayedResources where !item.isDenied {
+            selectionOverrides[item.resource.path] = (item.confidence == .high)
+        }
+    }
+
     func requestUninstall() {
         guard selectedCount > 0 else { return }
+        confirmMode = .uninstall
         showConfirmSheet = true
+    }
+
+    func requestOrphanRemoval() {
+        guard !selectedOrphans.isEmpty else { return }
+        confirmMode = .orphans
+        showConfirmSheet = true
+    }
+
+    func performConfirmedAction(dryRun: Bool = false) {
+        showConfirmSheet = false
+        switch confirmMode {
+        case .uninstall:
+            performUninstall(dryRun: dryRun)
+        case .orphans:
+            removeSelectedOrphans()
+        }
     }
 
     func performUninstall(dryRun: Bool = false) {
         guard let analysis else { return }
-        showConfirmSheet = false
         isRemoving = true
         statusMessage = dryRun ? "Dry run…" : "Moving items to Trash…"
         let overrides = selectionOverrides
@@ -177,27 +287,40 @@ final class AppViewModel: ObservableObject {
             )
             await MainActor.run {
                 self.lastReport = report
+                self.selectedReportID = report.id
                 self.isRemoving = false
-                self.statusMessage = "Removed \(report.removedCount) item(s)"
                 self.refreshReports()
-                if !dryRun {
-                    self.analyzeSelected()
+                if dryRun {
+                    self.showToast("Dry run complete — nothing moved")
+                    self.statusMessage = "Dry run: \(report.removedCount) would be removed"
+                } else {
+                    self.showToast("Moved \(report.removedCount) item(s) to Trash")
+                    self.statusMessage = "Removed \(report.removedCount) item(s)"
+                    // Refresh inventory; clear analysis if app gone
                     self.refreshApps()
+                    if !FileManager.default.fileExists(atPath: analysis.app.path) {
+                        self.analysis = nil
+                        self.selectedAppID = nil
+                    } else {
+                        self.analyzeSelected()
+                    }
                 }
-                self.sidebar = .reports
             }
         }
     }
 
     func scanOrphans() {
-        isScanning = true
-        statusMessage = "Searching for orphaned files…"
-        DispatchQueue.global(qos: .userInitiated).async {
-            let found = self.service.findOrphanedFiles(installedApps: self.apps)
-            DispatchQueue.main.async {
+        isScanningOrphans = true
+        statusMessage = "Searching for leftovers…"
+        let appsSnapshot = apps
+        Task.detached(priority: .userInitiated) {
+            let found = UninstallService.shared.findOrphanedFiles(installedApps: appsSnapshot)
+            await MainActor.run {
                 self.orphans = found
-                self.isScanning = false
-                self.statusMessage = "\(found.count) orphaned candidates"
+                self.hasScannedOrphans = true
+                self.selectedOrphanID = found.first?.id
+                self.isScanningOrphans = false
+                self.statusMessage = "\(found.count) leftover candidates"
             }
         }
     }
@@ -208,23 +331,27 @@ final class AppViewModel: ObservableObject {
     }
 
     func removeSelectedOrphans() {
-        let selected = orphans.filter(\.isSelected)
+        let selected = selectedOrphans
         guard !selected.isEmpty else { return }
         isRemoving = true
         Task {
             let report = await service.removal.removeOrphans(selected, dryRun: false)
             await MainActor.run {
                 self.lastReport = report
+                self.selectedReportID = report.id
                 self.isRemoving = false
                 self.refreshReports()
+                self.showToast("Moved \(report.removedCount) leftover(s) to Trash")
                 self.scanOrphans()
-                self.sidebar = .reports
             }
         }
     }
 
     func refreshReports() {
         reports = service.removal.loadReports()
+        if let id = selectedReportID {
+            lastReport = reports.first { $0.id == id } ?? lastReport
+        }
     }
 
     func openFullDiskAccessSettings() {
@@ -239,13 +366,36 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func openTrash() {
+        let trash = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash")
+        NSWorkspace.shared.open(URL(fileURLWithPath: trash))
+    }
+
+    func revealInFinder(_ path: String) {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
     func registerHelper() {
         do {
             try HelperXPCClient.shared.register()
-            statusMessage = "Helper registration requested"
+            showToast("Helper registration requested")
         } catch {
             errorMessage = error.localizedDescription
         }
         refreshPermissions()
+    }
+
+    func showToast(_ message: String) {
+        toastMessage = message
+        Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if toastMessage == message {
+                toastMessage = nil
+            }
+        }
+    }
+
+    func icon(for app: AppIdentity) -> NSImage {
+        NSWorkspace.shared.icon(forFile: app.path)
     }
 }

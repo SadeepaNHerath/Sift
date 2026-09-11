@@ -2,14 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Not sandboxed: deep Library scanning requires unrestricted FS access + FDA -->
+	<!-- Not sandboxed: deep Library scanning requires unrestricted FS access + FDA.
+	     Mac App Store is not a supported distribution path for this product. -->
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
-	<key>com.apple.security.files.user-selected.read-write</key>
-	<true/>
-	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
-	<array>
-		<string>com.safeuninstaller.UninstallerHelper</string>
-	</array>
 </dict>
 </plist>

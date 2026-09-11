@@ -48,7 +48,6 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
         let fileName = (path as NSString).lastPathComponent
 
         if let reason = denylist.denyReason(for: path, bundleHint: app.bundleIdentifier) {
-            // Still surface denied items so the UI can explain, but never select them.
             return AttributedResource(
                 resource: candidate,
                 signals: [],
@@ -61,8 +60,7 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
             )
         }
 
-        // Never attribute Apple apps' leftovers via this tool for third-party uninstall of Apple itself.
-        if app.isAppleSigned && app.bundleIdentifier.lowercased().hasPrefix("com.apple.") {
+        if app.bundleIdentifier.lowercased().hasPrefix("com.apple.") {
             return AttributedResource(
                 resource: candidate,
                 signals: [],
@@ -76,38 +74,35 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
         }
 
         var signals: [AttributionSignal] = []
-        let lowerPath = path.lowercased()
         let lowerName = fileName.lowercased()
         let bundleID = app.bundleIdentifier.lowercased()
 
-        // Exact bundle ID in path/name
-        if !bundleID.isEmpty && (lowerName.contains(bundleID) || lowerPath.contains("/\(bundleID)") || lowerPath.contains(bundleID)) {
+        // Exact bundle ID — path-component / filename boundary match only
+        if !bundleID.isEmpty && PathAllowlist.pathMatchesBundleID(path, bundleID: bundleID) {
             signals.append(.exactBundleID)
         }
 
-        // Containers named exactly as bundle ID
         if candidate.category == .containers || candidate.category == .applicationScripts {
-            if !bundleID.isEmpty && (lowerName == bundleID || lowerName.hasPrefix(bundleID)) {
+            if !bundleID.isEmpty && (lowerName == bundleID || lowerName.hasPrefix(bundleID + ".")) {
                 if !signals.contains(.exactBundleID) { signals.append(.exactBundleID) }
                 signals.append(.containerBundleID)
             }
         }
 
-        // Saved Application State: com.foo.app.savedState
         if candidate.category == .savedState {
-            if !bundleID.isEmpty && lowerName.hasPrefix(bundleID) {
+            if !bundleID.isEmpty && (lowerName == bundleID + ".savedstate" || lowerName.hasPrefix(bundleID + ".")) {
                 signals.append(.savedStateName)
                 if !signals.contains(.exactBundleID) { signals.append(.exactBundleID) }
             }
         }
 
-        // Vendor prefix (possible shared)
         var possiblyShared = false
         if let vendor = app.vendorPrefix?.lowercased(), !vendor.isEmpty {
-            if lowerName.contains(vendor) || lowerPath.contains(vendor) {
+            if PathAllowlist.pathMatchesBundleID(path, bundleID: vendor)
+                || lowerName.hasPrefix(vendor + ".")
+                || lowerName == vendor {
                 if !signals.contains(.exactBundleID) {
                     signals.append(.vendorPrefix)
-                    // Check if other installed apps share this vendor
                     let siblings = installedApps.filter {
                         $0.path != app.path
                             && ($0.vendorPrefix?.lowercased() == vendor
@@ -120,7 +115,7 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
             }
         }
 
-        // App name in path
+        let lowerPath = path.lowercased()
         let normalizedPath = lowerPath
             .replacingOccurrences(of: " ", with: "")
             .replacingOccurrences(of: "-", with: "")
@@ -131,7 +126,6 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
             }
         }
 
-        // LaunchAgent / Daemon Program path points into app bundle
         if candidate.category == .launchAgents || candidate.category == .launchDaemons {
             if launchdPointsToApp(plistPath: path, app: app) {
                 signals.append(.launchdProgramPath)
@@ -141,7 +135,6 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
             }
         }
 
-        // Preference / other plist content
         if path.lowercased().hasSuffix(".plist") {
             if plistReferencesBundle(plistPath: path, bundleID: app.bundleIdentifier) {
                 if !signals.contains(.plistContentReference) {
@@ -150,37 +143,38 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
             }
         }
 
-        // Team ID on helper binaries
         if candidate.category == .privilegedHelpers || !candidate.isDirectory {
             if let team = app.teamID, !team.isEmpty, binaryTeamID(at: path) == team {
                 signals.append(.teamIDMatch)
             }
         }
 
-        // Spotlight metadata
         if spotlightBundleID(at: path) == app.bundleIdentifier, !app.bundleIdentifier.isEmpty {
             signals.append(.spotlightBundleID)
         }
 
-        // Application bundle itself
         if candidate.category == .applicationBundle && path == app.path {
             signals.append(.exactBundleID)
         }
 
-        // pkg receipt membership — if path was discovered via receipt category .other with bundle in name
-        if candidate.category == .other && !bundleID.isEmpty && lowerPath.contains(bundleID) {
+        if candidate.category == .other && !bundleID.isEmpty && PathAllowlist.pathMatchesBundleID(path, bundleID: bundleID) {
             signals.append(.pkgReceipt)
         }
 
         guard !signals.isEmpty else { return nil }
 
         let uniqueSignals = Array(Set(signals))
-        let score = confidenceScore(signals: uniqueSignals)
-        let level = confidenceLevel(for: score, signals: uniqueSignals)
+        var score = confidenceScore(signals: uniqueSignals)
+        var level = confidenceLevel(for: score, signals: uniqueSignals)
 
-        // Vendor-only or name-only without stronger signals → possibly shared / lower trust
-        if uniqueSignals.allSatisfy({ $0 == .vendorPrefix || $0 == .appNameInPath || $0 == .teamIDMatch }) {
+        // Never promote name-only / vendor-only / team-only to High
+        let weakOnly = uniqueSignals.allSatisfy {
+            $0 == .vendorPrefix || $0 == .appNameInPath || $0 == .teamIDMatch
+        }
+        if weakOnly {
             possiblyShared = true
+            level = score >= mediumThreshold ? .medium : .low
+            if level == .high { level = .medium }
         }
 
         return AttributedResource(
@@ -195,7 +189,6 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
     }
 
     public func confidenceScore(signals: [AttributionSignal]) -> Double {
-        // Soft-OR of weights: 1 - Π(1 - w)
         let product = signals.reduce(1.0) { partial, signal in
             partial * (1.0 - min(signal.weight, 0.99))
         }
@@ -203,32 +196,37 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
     }
 
     public func confidenceLevel(for score: Double, signals: [AttributionSignal]) -> ConfidenceLevel {
-        // Exact bundle ID alone is always high.
-        if signals.contains(.exactBundleID)
+        let strong = signals.contains(.exactBundleID)
             || signals.contains(.containerBundleID)
-            || signals.contains(.launchdProgramPath) {
-            return score >= mediumThreshold ? .high : .medium
+            || signals.contains(.launchdProgramPath)
+        if strong {
+            return .high
+        }
+        // Name/vendor alone never High
+        let weakOnly = signals.allSatisfy {
+            $0 == .vendorPrefix || $0 == .appNameInPath || $0 == .teamIDMatch
+        }
+        if weakOnly {
+            return score >= mediumThreshold ? .medium : .low
         }
         if score >= highThreshold { return .high }
         if score >= mediumThreshold { return .medium }
         return .low
     }
 
-    // MARK: - Signal helpers
-
     private func launchdPointsToApp(plistPath: String, app: AppIdentity) -> Bool {
         guard let dict = NSDictionary(contentsOfFile: plistPath) as? [String: Any] else { return false }
-        let appPath = app.path
-        if let program = dict["Program"] as? String, program.hasPrefix(appPath) {
+        if let program = dict["Program"] as? String,
+           PathAllowlist.programPointsIntoApp(program: program, appPath: app.path) {
             return true
         }
-        if let args = dict["ProgramArguments"] as? [String], let first = args.first, first.hasPrefix(appPath) {
+        if let args = dict["ProgramArguments"] as? [String], let first = args.first,
+           PathAllowlist.programPointsIntoApp(program: first, appPath: app.path) {
             return true
         }
         if let bundleProgram = dict["BundleProgram"] as? String {
-            // Relative to app — if Label matches bundle, treat as related when path contains app name.
-            if bundleProgram.contains(app.executableName) || plistPath.lowercased().contains(app.bundleIdentifier.lowercased()) {
-                return true
+            if !app.executableName.isEmpty && bundleProgram.contains(app.executableName) {
+                return PathAllowlist.pathMatchesBundleID(plistPath, bundleID: app.bundleIdentifier)
             }
         }
         return false
@@ -237,7 +235,6 @@ public final class ResourceAttributionEngine: @unchecked Sendable {
     private func plistReferencesBundle(plistPath: String, bundleID: String) -> Bool {
         guard !bundleID.isEmpty else { return false }
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: plistPath)) else { return false }
-        // Binary or XML plist — search string form via PropertyListSerialization
         if let obj = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) {
             return deepContains(obj, needle: bundleID)
         }

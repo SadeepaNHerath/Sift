@@ -63,20 +63,20 @@ public final class UninstallService: @unchecked Sendable {
         return await removal.remove(app: result.app, resources: resources, dryRun: dryRun)
     }
 
-    /// Probes a protected user Library location to detect Full Disk Access.
+    /// Probes a documented TCC-protected path (not Mail/Safari) to detect Full Disk Access.
+    /// Uses `~/Library/Application Support/com.apple.TCC` when present; otherwise
+    /// `~/Library/Shortcuts` listing, which is FDA-gated on modern macOS.
     public func hasFullDiskAccess() -> Bool {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let mail = home.appendingPathComponent("Library/Mail")
-        let tcc = URL(fileURLWithPath: "/Library/Application Support/com.apple.TCC/TCC.db")
-        // If Mail exists and we can list it, or we can read TCC.db metadata, FDA is likely granted.
-        if FileManager.default.fileExists(atPath: mail.path) {
-            return (try? FileManager.default.contentsOfDirectory(atPath: mail.path)) != nil
+        let tccUser = home.appendingPathComponent("Library/Application Support/com.apple.TCC")
+        if FileManager.default.fileExists(atPath: tccUser.path) {
+            return (try? FileManager.default.contentsOfDirectory(atPath: tccUser.path)) != nil
         }
-        // Fallback: attempt to read Safari history or Cookies
-        let safari = home.appendingPathComponent("Library/Safari")
-        if FileManager.default.fileExists(atPath: safari.path) {
-            return (try? FileManager.default.contentsOfDirectory(atPath: safari.path)) != nil
+        let shortcuts = home.appendingPathComponent("Library/Shortcuts")
+        if FileManager.default.fileExists(atPath: shortcuts.path) {
+            return (try? FileManager.default.contentsOfDirectory(atPath: shortcuts.path)) != nil
         }
-        return FileManager.default.isReadableFile(atPath: tcc.path)
+        // Conservative: if neither path exists, treat as not granted so Setup still prompts.
+        return false
     }
 }

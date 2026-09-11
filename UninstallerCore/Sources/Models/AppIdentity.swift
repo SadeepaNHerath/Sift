@@ -43,9 +43,15 @@ public struct AppIdentity: Identifiable, Hashable, Codable, Sendable {
     }
 
     /// Reverse-DNS vendor prefix, e.g. "com.vendor" from "com.vendor.app".
+    /// Rejects too-short prefixes like bare "com" / "net" / "org".
     public var vendorPrefix: String? {
-        let parts = bundleIdentifier.split(separator: ".")
-        guard parts.count >= 2 else { return nil }
-        return parts.prefix(parts.count - 1).joined(separator: ".")
+        let parts = bundleIdentifier.split(separator: ".").map(String.init)
+        guard parts.count >= 3 else { return nil }
+        let prefix = parts.dropLast().joined(separator: ".")
+        let blocked = Set(["com", "net", "org", "edu", "gov", "io", "co", "app"])
+        if blocked.contains(prefix.lowercased()) { return nil }
+        // Also require at least two labels in the vendor prefix (e.g. com.vendor)
+        if prefix.split(separator: ".").count < 2 { return nil }
+        return prefix
     }
 }
