@@ -7,16 +7,24 @@ import AppKit
 @MainActor
 final class AppViewModel: ObservableObject {
     enum SidebarItem: String, CaseIterable, Identifiable {
+        case overview = "Overview"
         case applications = "Applications"
         case leftovers = "Leftovers"
+        case largeFiles = "Large Files"
+        case caches = "Caches"
+        case developer = "Developer"
         case history = "History"
 
         var id: String { rawValue }
 
         var systemImage: String {
             switch self {
+            case .overview: return "gauge.with.dots.needle.33percent"
             case .applications: return "square.grid.2x2"
             case .leftovers: return "doc.badge.questionmark"
+            case .largeFiles: return "film.stack"
+            case .caches: return "internaldrive"
+            case .developer: return "hammer"
             case .history: return "clock"
             }
         }
@@ -25,9 +33,12 @@ final class AppViewModel: ObservableObject {
     enum ConfirmMode {
         case uninstall
         case orphans
+        case largeFiles
+        case caches
+        case developer
     }
 
-    @Published var sidebar: SidebarItem = .applications
+    @Published var sidebar: SidebarItem = .overview
     @Published var apps: [AppIdentity] = []
     @Published var selectedAppID: String?
     @Published var analysis: AttributionResult?
@@ -37,6 +48,22 @@ final class AppViewModel: ObservableObject {
     @Published var hasScannedOrphans = false
     @Published var reports: [AuditReport] = []
     @Published var selectedReportID: UUID?
+
+    // Storage toolkit
+    @Published var storageOverview: StorageOverview?
+    @Published var isLoadingOverview = false
+    @Published var largeFileItems: [LargeFileItem] = []
+    @Published var hasScannedLargeFiles = false
+    @Published var isScanningLargeFiles = false
+    @Published var cacheItems: [CacheItem] = []
+    @Published var hasScannedCaches = false
+    @Published var isScanningCaches = false
+    @Published var devItems: [DevDependencyItem] = []
+    @Published var hasScannedDev = false
+    @Published var isScanningDev = false
+    @Published var compressingPath: String?
+    @Published var compressionProgress: Double = 0
+    @Published var showEmptyTrashConfirm = false
 
     @Published var isListingApps = false
     @Published var isAnalyzing = false
@@ -73,6 +100,8 @@ final class AppViewModel: ObservableObject {
 
     var isBusy: Bool {
         isListingApps || isAnalyzing || isScanningOrphans || isRemoving
+            || isLoadingOverview || isScanningLargeFiles || isScanningCaches
+            || isScanningDev || compressingPath != nil
     }
 
     var needsSetup: Bool {
@@ -102,6 +131,22 @@ final class AppViewModel: ObservableObject {
         orphans.filter(\.isSelected)
     }
 
+    var selectedLargeFiles: [LargeFileItem] {
+        largeFileItems.filter(\.isSelected)
+    }
+
+    var selectedCaches: [CacheItem] {
+        cacheItems.filter(\.isSelected)
+    }
+
+    var selectedDevItems: [DevDependencyItem] {
+        devItems.filter(\.isSelected)
+    }
+
+    var trashBytes: Int64 {
+        storageOverview?.categories.first(where: { $0.kind == .trash })?.byteSize ?? 0
+    }
+
     var confirmPreviewItems: [(path: String, confidence: String)] {
         switch confirmMode {
         case .uninstall:
@@ -110,9 +155,33 @@ final class AppViewModel: ObservableObject {
                 .prefix(12)
                 .map { ($0.resource.path, $0.confidence.displayName) }
         case .orphans:
-            return selectedOrphans
-                .prefix(12)
-                .map { ($0.resource.path, $0.confidence.displayName) }
+            return selectedOrphans.prefix(12).map { ($0.resource.path, $0.confidence.displayName) }
+        case .largeFiles:
+            return selectedLargeFiles.prefix(12).map { ($0.path, $0.isVideo ? "Video" : "File") }
+        case .caches:
+            return selectedCaches.prefix(12).map { ($0.path, "Cache") }
+        case .developer:
+            return selectedDevItems.prefix(12).map { ($0.path, $0.group.displayName) }
+        }
+    }
+
+    var confirmSelectedCount: Int {
+        switch confirmMode {
+        case .uninstall: return selectedCount
+        case .orphans: return selectedOrphans.count
+        case .largeFiles: return selectedLargeFiles.count
+        case .caches: return selectedCaches.count
+        case .developer: return selectedDevItems.count
+        }
+    }
+
+    var confirmSelectedBytes: Int64 {
+        switch confirmMode {
+        case .uninstall: return selectedBytes
+        case .orphans: return selectedOrphans.reduce(0) { $0 + $1.resource.byteSize }
+        case .largeFiles: return selectedLargeFiles.reduce(0) { $0 + $1.byteSize }
+        case .caches: return selectedCaches.reduce(0) { $0 + $1.byteSize }
+        case .developer: return selectedDevItems.reduce(0) { $0 + $1.byteSize }
         }
     }
 
@@ -122,6 +191,7 @@ final class AppViewModel: ObservableObject {
         refreshPermissions()
         refreshApps()
         refreshReports()
+        refreshStorageOverview()
         if !hasFDA && !setupDismissed {
             showSetupSheet = true
         }
@@ -141,12 +211,213 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Storage overview
+
+    func refreshStorageOverview() {
+        isLoadingOverview = true
+        statusMessage = "Measuring storage…"
+        Task.detached(priority: .userInitiated) {
+            let snap = UninstallService.shared.storageSnapshot()
+            await MainActor.run {
+                self.storageOverview = snap
+                self.isLoadingOverview = false
+                self.statusMessage = "\(snap.formattedAvailable) free of \(snap.formattedTotal)"
+            }
+        }
+    }
+
+    func requestEmptyTrash() {
+        showEmptyTrashConfirm = true
+    }
+
+    func emptyTrash() {
+        showEmptyTrashConfirm = false
+        if let err = service.removal.emptyTrash() {
+            errorMessage = err
+        } else {
+            showToast("Trash emptied")
+            refreshStorageOverview()
+        }
+    }
+
+    // MARK: - Large files & video
+
+    func scanLargeFiles() {
+        isScanningLargeFiles = true
+        statusMessage = "Scanning large files…"
+        Task.detached(priority: .userInitiated) {
+            let found = UninstallService.shared.scanLargeFiles()
+            await MainActor.run {
+                self.largeFileItems = found
+                self.hasScannedLargeFiles = true
+                self.isScanningLargeFiles = false
+                self.statusMessage = "\(found.count) large files"
+            }
+        }
+    }
+
+    func toggleLargeFile(_ item: LargeFileItem, selected: Bool) {
+        guard let idx = largeFileItems.firstIndex(where: { $0.id == item.id }) else { return }
+        largeFileItems[idx].isSelected = selected
+    }
+
+    func requestLargeFileRemoval() {
+        guard !selectedLargeFiles.isEmpty else { return }
+        confirmMode = .largeFiles
+        showConfirmSheet = true
+    }
+
+    func removeSelectedLargeFiles() {
+        let selected = selectedLargeFiles
+        guard !selected.isEmpty else { return }
+        isRemoving = true
+        let paths = selected.map { (path: $0.path, category: ResourceCategory.largeFile, byteSize: $0.byteSize) }
+        Task {
+            let report = await service.removal.trashPaths(paths, reportName: "Large Files")
+            await MainActor.run {
+                self.lastReport = report
+                self.selectedReportID = report.id
+                self.isRemoving = false
+                self.refreshReports()
+                self.showToast("Moved \(report.removedCount) large file(s) to Trash")
+                self.scanLargeFiles()
+                self.refreshStorageOverview()
+            }
+        }
+    }
+
+    func compressVideo(_ item: LargeFileItem) {
+        guard item.isVideo else { return }
+        compressingPath = item.path
+        compressionProgress = 0
+        statusMessage = "Compressing \(item.displayName)…"
+        Task {
+            let result = await service.videoCompressor.compress(path: item.path) { fraction in
+                Task { @MainActor in
+                    self.compressionProgress = fraction
+                }
+            }
+            await MainActor.run {
+                self.compressingPath = nil
+                self.compressionProgress = 0
+                if result.success {
+                    let saved = ByteCountFormatter.string(fromByteCount: result.savedBytes, countStyle: .file)
+                    self.showToast("Compressed — saved ~\(saved). Original is in Trash.")
+                    self.scanLargeFiles()
+                    self.refreshStorageOverview()
+                } else {
+                    self.errorMessage = result.errorMessage ?? "Compression failed"
+                }
+                self.statusMessage = result.success ? "Compression complete" : "Compression failed"
+            }
+        }
+    }
+
+    // MARK: - Caches
+
+    func scanCaches() {
+        isScanningCaches = true
+        statusMessage = "Scanning caches…"
+        Task.detached(priority: .userInitiated) {
+            let found = UninstallService.shared.scanCaches()
+            await MainActor.run {
+                self.cacheItems = found
+                self.hasScannedCaches = true
+                self.isScanningCaches = false
+                self.statusMessage = "\(found.count) cache folders"
+            }
+        }
+    }
+
+    func toggleCache(_ item: CacheItem, selected: Bool) {
+        guard let idx = cacheItems.firstIndex(where: { $0.id == item.id }) else { return }
+        cacheItems[idx].isSelected = selected
+    }
+
+    func selectAllCaches(_ selected: Bool) {
+        for i in cacheItems.indices {
+            cacheItems[i].isSelected = selected
+        }
+    }
+
+    func requestCacheRemoval() {
+        guard !selectedCaches.isEmpty else { return }
+        confirmMode = .caches
+        showConfirmSheet = true
+    }
+
+    func removeSelectedCaches() {
+        let selected = selectedCaches
+        guard !selected.isEmpty else { return }
+        isRemoving = true
+        let paths = selected.map { (path: $0.path, category: ResourceCategory.userCache, byteSize: $0.byteSize) }
+        Task {
+            let report = await service.removal.trashPaths(paths, reportName: "Caches")
+            await MainActor.run {
+                self.lastReport = report
+                self.selectedReportID = report.id
+                self.isRemoving = false
+                self.refreshReports()
+                self.showToast("Moved \(report.removedCount) cache folder(s) to Trash")
+                self.scanCaches()
+                self.refreshStorageOverview()
+            }
+        }
+    }
+
+    // MARK: - Developer
+
+    func scanDevDependencies() {
+        isScanningDev = true
+        statusMessage = "Scanning developer folders…"
+        Task.detached(priority: .userInitiated) {
+            let found = UninstallService.shared.scanDevDependencies()
+            await MainActor.run {
+                self.devItems = found
+                self.hasScannedDev = true
+                self.isScanningDev = false
+                self.statusMessage = "\(found.count) developer items"
+            }
+        }
+    }
+
+    func toggleDevItem(_ item: DevDependencyItem, selected: Bool) {
+        guard let idx = devItems.firstIndex(where: { $0.id == item.id }) else { return }
+        devItems[idx].isSelected = selected
+    }
+
+    func requestDevRemoval() {
+        guard !selectedDevItems.isEmpty else { return }
+        confirmMode = .developer
+        showConfirmSheet = true
+    }
+
+    func removeSelectedDevItems() {
+        let selected = selectedDevItems
+        guard !selected.isEmpty else { return }
+        isRemoving = true
+        let paths = selected.map { (path: $0.path, category: ResourceCategory.devDependency, byteSize: $0.byteSize) }
+        Task {
+            let report = await service.removal.trashPaths(paths, reportName: "Developer Dependencies")
+            await MainActor.run {
+                self.lastReport = report
+                self.selectedReportID = report.id
+                self.isRemoving = false
+                self.refreshReports()
+                self.showToast("Moved \(report.removedCount) developer item(s) to Trash")
+                self.scanDevDependencies()
+                self.refreshStorageOverview()
+            }
+        }
+    }
+
+    // MARK: - Apps / orphans (existing)
+
     func refreshApps() {
         isListingApps = true
         statusMessage = "Scanning Applications…"
         Task.detached(priority: .userInitiated) {
-            let list = await MainActor.run { self.service }
-                .listApplications()
+            let list = UninstallService.shared.listApplications()
                 .filter { !$0.bundleIdentifier.lowercased().hasPrefix("com.apple.") }
             await MainActor.run {
                 self.apps = list
@@ -271,6 +542,12 @@ final class AppViewModel: ObservableObject {
             performUninstall(dryRun: dryRun)
         case .orphans:
             removeSelectedOrphans()
+        case .largeFiles:
+            removeSelectedLargeFiles()
+        case .caches:
+            removeSelectedCaches()
+        case .developer:
+            removeSelectedDevItems()
         }
     }
 
@@ -296,8 +573,8 @@ final class AppViewModel: ObservableObject {
                 } else {
                     self.showToast("Moved \(report.removedCount) item(s) to Trash")
                     self.statusMessage = "Removed \(report.removedCount) item(s)"
-                    // Refresh inventory; clear analysis if app gone
                     self.refreshApps()
+                    self.refreshStorageOverview()
                     if !FileManager.default.fileExists(atPath: analysis.app.path) {
                         self.analysis = nil
                         self.selectedAppID = nil
@@ -343,6 +620,7 @@ final class AppViewModel: ObservableObject {
                 self.refreshReports()
                 self.showToast("Moved \(report.removedCount) leftover(s) to Trash")
                 self.scanOrphans()
+                self.refreshStorageOverview()
             }
         }
     }

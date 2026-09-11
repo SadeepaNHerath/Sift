@@ -1,5 +1,8 @@
 import Foundation
 
+/// Needs AppKit only for emptyTrash AppleScript — keep import local to RemovalEngine via @MainActor method.
+import AppKit
+
 public protocol PrivilegedRemovalClient: AnyObject {
     var isAvailable: Bool { get }
     func trashItems(at paths: [String]) async throws -> [String: String]
@@ -292,5 +295,56 @@ public final class RemovalEngine: @unchecked Sendable {
             guard let data = try? Data(contentsOf: url) else { return nil }
             return try? decoder.decode(AuditReport.self, from: data)
         }
+    }
+
+    /// Trash arbitrary user-selected paths (caches, large files, dev deps) with denylist checks.
+    public func trashPaths(
+        _ paths: [(path: String, category: ResourceCategory, byteSize: Int64)],
+        reportName: String,
+        dryRun: Bool = false
+    ) async -> AuditReport {
+        var attributed: [AttributedResource] = []
+        for entry in paths {
+            let resource = DiscoveredResource(
+                path: entry.path,
+                category: entry.category,
+                isDirectory: true,
+                byteSize: entry.byteSize
+            )
+            attributed.append(
+                AttributedResource(
+                    resource: resource,
+                    signals: [],
+                    confidence: .medium,
+                    score: 0.5,
+                    isSelected: true
+                )
+            )
+        }
+        let synthetic = AppIdentity(
+            path: "",
+            bundleIdentifier: "storage.toolkit",
+            name: reportName
+        )
+        return await remove(app: synthetic, resources: attributed, dryRun: dryRun)
+    }
+
+    /// Empties the user's Trash via Finder. Returns an error message on failure.
+    @MainActor
+    public func emptyTrash() -> String? {
+        let script = """
+        tell application "Finder"
+            empty the trash
+        end tell
+        """
+        var error: NSDictionary?
+        if let appleScript = NSAppleScript(source: script) {
+            appleScript.executeAndReturnError(&error)
+            if let error {
+                return error[NSAppleScript.errorMessage] as? String ?? "Could not empty Trash"
+            }
+            return nil
+        }
+        return "Could not create AppleScript"
     }
 }

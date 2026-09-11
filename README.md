@@ -60,8 +60,12 @@ Create a GitHub Release (e.g. tag `v1.0.0`), upload both files, and share the do
 
 ## Features
 
-- Multi-signal **application resource attribution** with High / Medium / Low confidence and evidence badges
+- **Storage Overview** — free/total space and category breakdown, with Empty Trash
+- Multi-signal **application resource attribution** with High / Medium / Low confidence
 - Orphaned-file (“Leftovers”) search for already-removed apps
+- **Large Files & Videos** — find big files; compress videos (HEVC) and Trash originals
+- **Caches** — clear third-party `~/Library/Caches` leaves safely
+- **Developer** — Xcode leftovers, package caches, and per-project `node_modules` / Pods / venvs (manual select only)
 - Trash-only removal, confirmation sheets, audit reports (`~/Library/Application Support/SafeUninstaller/Reports`, mode `0700`)
 - Optional privileged helper for `/Library` (only when Developer ID–signed)
 - First-run Setup for Full Disk Access

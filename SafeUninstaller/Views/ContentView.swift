@@ -25,28 +25,42 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
         } content: {
             switch model.sidebar {
+            case .overview:
+                OverviewSidebarList()
             case .applications:
                 ApplicationListView()
             case .leftovers:
                 OrphanListView()
+            case .largeFiles:
+                LargeFilesPane()
+            case .caches:
+                CachesPane()
+            case .developer:
+                DeveloperPane()
             case .history:
                 ReportsListView()
             }
         } detail: {
             switch model.sidebar {
+            case .overview:
+                OverviewView()
             case .applications:
                 AppDetailView()
             case .leftovers:
                 OrphanDetailView()
+            case .largeFiles:
+                LargeFilesDetailView()
+            case .caches:
+                CachesDetailView()
+            case .developer:
+                DeveloperDetailView()
             case .history:
                 ReportDetailView()
             }
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                if model.sidebar == .applications {
-                    Button("Setup") { model.showSetupSheet = true }
-                }
+                Button("Setup") { model.showSetupSheet = true }
             }
             ToolbarItem(placement: .status) {
                 HStack(spacing: 8) {
@@ -99,6 +113,16 @@ struct ContentView: View {
         } message: {
             Text(model.errorMessage ?? "")
         }
+        .confirmationDialog(
+            "Empty Trash?",
+            isPresented: $model.showEmptyTrashConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Empty Trash", role: .destructive) { model.emptyTrash() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes items in Trash and frees \(ByteCountFormatter.string(fromByteCount: model.trashBytes, countStyle: .file)). This cannot be undone.")
+        }
         .sheet(isPresented: $model.showConfirmSheet) {
             ConfirmRemovalSheet()
                 .environmentObject(model)
@@ -107,6 +131,30 @@ struct ContentView: View {
             SetupSheet()
                 .environmentObject(model)
         }
+    }
+}
+
+struct OverviewSidebarList: View {
+    @EnvironmentObject private var model: AppViewModel
+
+    var body: some View {
+        List {
+            if let overview = model.storageOverview {
+                Section("Disk") {
+                    LabeledContent("Free", value: overview.formattedAvailable)
+                    LabeledContent("Total", value: overview.formattedTotal)
+                }
+                Section("Categories") {
+                    ForEach(overview.categories) { cat in
+                        LabeledContent(cat.kind.displayName, value: cat.formattedSize)
+                    }
+                }
+            } else {
+                Text("Measuring storage…")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Storage")
     }
 }
 
@@ -139,7 +187,7 @@ struct SetupSheet: View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Welcome to SafeUninstaller")
                 .font(.title2.bold())
-            Text("Ad-hoc / unsigned builds are fully supported for cleaning your personal Library. Nothing is deleted until you review and confirm.")
+            Text("Free space by uninstalling apps completely, clearing caches, compressing videos, and removing developer leftovers you no longer need. Nothing is deleted until you review and confirm.")
                 .foregroundStyle(.secondary)
 
             GroupBox("Full Disk Access") {
@@ -150,7 +198,7 @@ struct SetupSheet: View {
                         Text(model.hasFDA ? "Granted" : "Not granted")
                             .fontWeight(.medium)
                     }
-                    Text("Needed to scan protected Library folders for related files.")
+                    Text("Needed to scan protected Library folders accurately.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     HStack {
@@ -175,7 +223,7 @@ struct SetupSheet: View {
                         Button("Login Items…") { model.openLoginItemsSettings() }
                     }
                     if !model.canRegisterHelper {
-                        Text("Needs a paid Apple Developer ID certificate. Without it, SafeUninstaller still cleans user Library data normally.")
+                        Text("Needs a paid Apple Developer ID certificate. Without it, user-Library cleanup still works.")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }
@@ -201,7 +249,7 @@ struct SetupSheet: View {
             }
         }
         .padding(24)
-        .frame(width: 480)
+        .frame(width: 500)
         .onAppear { model.refreshPermissions() }
     }
 }
