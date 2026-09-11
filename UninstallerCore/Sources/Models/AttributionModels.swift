@@ -87,6 +87,10 @@ public enum ResourceCategory: String, Codable, Hashable, Sendable, CaseIterable 
     case launchDaemons
     case privilegedHelpers
     case crashReports
+    case largeFile
+    case videoOriginal
+    case userCache
+    case devDependency
     case other
 
     public var displayName: String {
@@ -106,6 +110,10 @@ public enum ResourceCategory: String, Codable, Hashable, Sendable, CaseIterable 
         case .launchDaemons: return "Launch Daemons"
         case .privilegedHelpers: return "Privileged Helpers"
         case .crashReports: return "Crash Reports"
+        case .largeFile: return "Large File"
+        case .videoOriginal: return "Video (Original)"
+        case .userCache: return "User Cache"
+        case .devDependency: return "Developer Dependency"
         case .other: return "Other"
         }
     }

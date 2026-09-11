@@ -293,22 +293,39 @@ struct FlexibleBadgeWrap: View {
 struct ConfirmRemovalSheet: View {
     @EnvironmentObject private var model: AppViewModel
 
-    private var count: Int {
-        model.confirmMode == .uninstall ? model.selectedCount : model.selectedOrphans.count
+    private var count: Int { model.confirmSelectedCount }
+    private var bytes: Int64 { model.confirmSelectedBytes }
+
+    private var title: String {
+        switch model.confirmMode {
+        case .uninstall: return "Move to Trash?"
+        case .orphans: return "Remove leftovers?"
+        case .largeFiles: return "Remove large files?"
+        case .caches: return "Clear caches?"
+        case .developer: return "Remove developer items?"
+        }
     }
 
-    private var bytes: Int64 {
-        if model.confirmMode == .uninstall {
-            return model.selectedBytes
+    private var footnote: String {
+        switch model.confirmMode {
+        case .uninstall:
+            return "Medium and low confidence items may belong to other software. Review carefully."
+        case .orphans:
+            return "Leftovers are best-effort guesses. Restore from Trash if something breaks."
+        case .largeFiles:
+            return "Selected files move to Trash. Empty Trash later to free disk space."
+        case .caches:
+            return "Apps may rebuild caches. Pages or launches can be slower until then."
+        case .developer:
+            return "Project dependencies can usually be restored with install/build commands. High-risk items need extra care."
         }
-        return model.selectedOrphans.reduce(0) { $0 + $1.resource.byteSize }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(model.confirmMode == .uninstall ? "Move to Trash?" : "Remove leftovers?")
+            Text(title)
                 .font(.title2.bold())
-            Text("\(count) item(s) · \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) will be moved to Trash. You can restore them from Trash later.")
+            Text("\(count) item(s) · \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)) will be moved to Trash. You can restore them from Trash later. Empty Trash to actually free space.")
                 .foregroundStyle(.secondary)
 
             if model.confirmMode == .uninstall {
@@ -325,7 +342,7 @@ struct ConfirmRemovalSheet: View {
                         HStack {
                             Text(item.confidence)
                                 .font(.caption2)
-                                .frame(width: 56, alignment: .leading)
+                                .frame(width: 72, alignment: .leading)
                                 .foregroundStyle(.secondary)
                             Text((item.path as NSString).lastPathComponent)
                                 .font(.caption)
@@ -341,7 +358,7 @@ struct ConfirmRemovalSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Text("Medium and low confidence items may belong to other software. Review carefully.")
+            Text(footnote)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
