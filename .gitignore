@@ -6,6 +6,7 @@ xcuserdata/
 build/
 .swiftpm/
 .idea/
+dist/
 *.moved-aside
 *.pbxuser
 !default.pbxuser
