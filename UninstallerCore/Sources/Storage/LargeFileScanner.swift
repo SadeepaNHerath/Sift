@@ -2,7 +2,7 @@ import Foundation
 import CoreServices
 
 /// Finds large files under common user media folders.
-/// Prefers Spotlight (`MDQuery`) when the index responds; falls back to FileManager enumeration.
+/// Prefers Spotlight (`MDQuery`) merged with FileManager enumeration (deduped).
 public final class LargeFileScanner: @unchecked Sendable {
     public static let shared = LargeFileScanner()
 
@@ -17,33 +17,82 @@ public final class LargeFileScanner: @unchecked Sendable {
         self.denylist = denylist
     }
 
-    public func defaultRoots(home: URL? = nil) -> [URL] {
+    public func defaultRoots(home: URL? = nil, includeExpandedHome: Bool = false) -> [URL] {
         let homeURL = home ?? fileManager.homeDirectoryForCurrentUser
-        return [
+        var roots = [
             homeURL.appendingPathComponent("Downloads"),
             homeURL.appendingPathComponent("Movies"),
             homeURL.appendingPathComponent("Desktop"),
-            homeURL.appendingPathComponent("Documents")
+            homeURL.appendingPathComponent("Documents"),
+            homeURL.appendingPathComponent("Pictures")
         ]
+        if includeExpandedHome {
+            roots.append(homeURL.appendingPathComponent("Music"))
+            // Home itself — FileManager scan skips Library / Applications / .Trash / hidden.
+            roots.append(homeURL)
+        }
+        return roots
     }
 
     public func scan(
         roots: [URL]? = nil,
         minimumBytes: Int64 = 100 * 1024 * 1024,
         maxFiles: Int = 5_000,
-        preferSpotlight: Bool = true
+        preferSpotlight: Bool = true,
+        includeExpandedHome: Bool = false
     ) -> [LargeFileItem] {
-        let searchRoots = roots ?? defaultRoots()
+        let searchRoots = roots ?? defaultRoots(includeExpandedHome: includeExpandedHome)
 
+        let spotlight: [LargeFileItem]
         if preferSpotlight {
-            let spotlight = spotlightScan(roots: searchRoots, minimumBytes: minimumBytes, maxFiles: maxFiles)
-            if !spotlight.isEmpty {
-                return spotlight.sorted { $0.byteSize > $1.byteSize }
-            }
+            spotlight = spotlightScan(roots: searchRoots, minimumBytes: minimumBytes, maxFiles: maxFiles)
+        } else {
+            spotlight = []
         }
 
-        return fileManagerScan(roots: searchRoots, minimumBytes: minimumBytes, maxFiles: maxFiles)
+        let enumerated = fileManagerScan(
+            roots: searchRoots,
+            minimumBytes: minimumBytes,
+            maxFiles: maxFiles,
+            skipHomeSpecialFolders: includeExpandedHome || roots == nil
+        )
+
+        return Self.merge(spotlight: spotlight, enumerated: enumerated, maxFiles: maxFiles)
+    }
+
+    /// Union Spotlight + FileManager; FileManager wins on path collision; cap at `maxFiles`.
+    public static func merge(
+        spotlight: [LargeFileItem],
+        enumerated: [LargeFileItem],
+        maxFiles: Int
+    ) -> [LargeFileItem] {
+        var byPath: [String: LargeFileItem] = [:]
+        for item in spotlight {
+            let key = (item.path as NSString).standardizingPath
+            byPath[key] = LargeFileItem(
+                path: key,
+                byteSize: item.byteSize,
+                modifiedAt: item.modifiedAt,
+                isVideo: item.isVideo,
+                isImage: item.isImage,
+                isSelected: item.isSelected
+            )
+        }
+        for item in enumerated {
+            let key = (item.path as NSString).standardizingPath
+            byPath[key] = LargeFileItem(
+                path: key,
+                byteSize: item.byteSize,
+                modifiedAt: item.modifiedAt,
+                isVideo: item.isVideo,
+                isImage: item.isImage,
+                isSelected: item.isSelected
+            )
+        }
+        return Array(byPath.values)
             .sorted { $0.byteSize > $1.byteSize }
+            .prefix(maxFiles)
+            .map { $0 }
     }
 
     // MARK: - Spotlight (MDQuery)
@@ -64,7 +113,6 @@ public final class LargeFileScanner: @unchecked Sendable {
         let scope = existingRoots.map(\.path) as CFArray
         MDQuerySetSearchScope(query, scope, 0)
 
-        // Synchronous execute — works from background threads without a run loop.
         guard MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue)) else {
             return []
         }
@@ -113,13 +161,19 @@ public final class LargeFileScanner: @unchecked Sendable {
     private func fileManagerScan(
         roots: [URL],
         minimumBytes: Int64,
-        maxFiles: Int
+        maxFiles: Int,
+        skipHomeSpecialFolders: Bool
     ) -> [LargeFileItem] {
         var results: [LargeFileItem] = []
         var seen = Set<String>()
+        let homePath = (fileManager.homeDirectoryForCurrentUser.path as NSString).standardizingPath
+        let skipNames: Set<String> = ["Library", "Applications", ".Trash"]
 
         for root in roots {
             guard fileManager.fileExists(atPath: root.path) else { continue }
+            let rootStandard = (root.path as NSString).standardizingPath
+            let isHomeRoot = skipHomeSpecialFolders && rootStandard == homePath
+
             guard let enumerator = fileManager.enumerator(
                 at: root,
                 includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey, .isPackageKey],
@@ -129,6 +183,20 @@ public final class LargeFileScanner: @unchecked Sendable {
             while let url = enumerator.nextObject() as? URL {
                 if results.count >= maxFiles { break }
                 let path = (url.path as NSString).standardizingPath
+
+                if isHomeRoot {
+                    // Only skip top-level special folders under home when scanning home itself.
+                    let relative = String(path.dropFirst(homePath.count))
+                        .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                    let first = relative.split(separator: "/").first.map(String.init) ?? ""
+                    if skipNames.contains(first) {
+                        if relative == first || relative.hasPrefix(first + "/") {
+                            enumerator.skipDescendants()
+                            continue
+                        }
+                    }
+                }
+
                 if denylist.isDenied(path: path) { continue }
 
                 guard let values = try? url.resourceValues(forKeys: [

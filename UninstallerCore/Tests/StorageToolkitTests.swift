@@ -174,6 +174,103 @@ final class StorageToolkitTests: XCTestCase {
         XCTAssertEqual(result.savedPercent, 75)
     }
 
+    func testLargeFileMergeDedupeAndFileManagerWins() {
+        let shared = "/tmp/shared-big.mov"
+        let spotlightOnly = LargeFileItem(path: shared, byteSize: 100, isVideo: true, isImage: false)
+        let enumeratedShared = LargeFileItem(path: shared, byteSize: 200, isVideo: true, isImage: false)
+        let fmOnly = LargeFileItem(path: "/tmp/other.zip", byteSize: 150, isVideo: false, isImage: false)
+
+        let merged = LargeFileScanner.merge(
+            spotlight: [spotlightOnly],
+            enumerated: [enumeratedShared, fmOnly],
+            maxFiles: 10
+        )
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(merged.first?.byteSize, 200, "FileManager size should win on collision")
+        XCTAssertTrue(merged.contains { $0.path.hasSuffix("other.zip") })
+    }
+
+    func testDefaultRootsIncludePictures() {
+        let roots = LargeFileScanner(denylist: permissiveDenylist).defaultRoots(home: tempRoot)
+        XCTAssertTrue(roots.contains { $0.lastPathComponent == "Pictures" })
+        XCTAssertTrue(roots.contains { $0.lastPathComponent == "Downloads" })
+        let expanded = LargeFileScanner(denylist: permissiveDenylist)
+            .defaultRoots(home: tempRoot, includeExpandedHome: true)
+        XCTAssertTrue(expanded.contains { $0.lastPathComponent == "Music" })
+        XCTAssertTrue(expanded.contains { standardized($0.path) == standardized(tempRoot.path) })
+    }
+
+    func testImageCompressorCancelDoesNotTrash() throws {
+        let sourceURL = try writeLargeJPEG(named: "cancel-me.jpg", width: 1600, height: 1200)
+        let compressor = ImageCompressor(
+            fileManager: .default,
+            denylist: permissiveDenylist,
+            jpegQuality: 0.85,
+            heicQuality: 0.85
+        )
+
+        let expect = expectation(description: "compress finished")
+        var result: VideoCompressionResult?
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Automatic encodes HEIC then JPEG — gives cancel a window before trash.
+            result = compressor.compress(path: sourceURL.path, format: .automatic)
+            expect.fulfill()
+        }
+        DispatchQueue.global().async {
+            for _ in 0..<200 {
+                Thread.sleep(forTimeInterval: 0.005)
+                compressor.cancelActive()
+            }
+        }
+        wait(for: [expect], timeout: 60)
+        let final = try XCTUnwrap(result)
+        XCTAssertTrue(final.wasCancelled, "Expected cancel, got: \(final.errorMessage ?? "success")")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: sourceURL.path), "Original must remain after cancel")
+        XCTAssertFalse(final.success)
+    }
+
+    func testImageCompressorRefusesDeniedPath() {
+        let compressor = ImageCompressor(denylist: SafetyDenylist.shared)
+        let result = compressor.compress(path: "/System/Library/CoreServices/SystemVersion.plist", format: .jpeg)
+        XCTAssertFalse(result.success)
+        XCTAssertFalse(result.wasCancelled)
+        XCTAssertNotNil(result.errorMessage)
+    }
+
+    func testVideoCompressorCancelWithNoSessionDoesNotCrash() {
+        VideoCompressor.shared.cancelActiveExport()
+    }
+
+    func testCLICleanupFindsBinaryOutsideDefaultPATH() throws {
+        let binDir = tempRoot.appendingPathComponent("custom-bin")
+        try FileManager.default.createDirectory(at: binDir, withIntermediateDirectories: true)
+        let brew = binDir.appendingPathComponent("brew")
+        try "#!/bin/sh\necho ok\n".write(to: brew, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: brew.path)
+
+        let runner = CLICleanupRunner(pathResolver: { name in
+            let candidate = binDir.appendingPathComponent(name).path
+            return FileManager.default.isExecutableFile(atPath: candidate) ? candidate : nil
+        })
+        XCTAssertTrue(runner.availableActions().contains { $0.toolID == "brew" && $0.isAvailable })
+        let result = runner.run(.brew)
+        XCTAssertTrue(result.success, result.summary)
+    }
+
+    func testCLICleanupTimeout() {
+        let runner = CLICleanupRunner(timeout: 1)
+        let result = runner.runProcess(toolID: "sleep", launchPath: "/bin/sleep", arguments: ["5"])
+        XCTAssertFalse(result.success)
+        XCTAssertTrue(result.summary.lowercased().contains("timed out"), result.summary)
+    }
+
+    func testApproximateCategoryFormatting() {
+        let exact = StorageCategorySize(kind: .caches, byteSize: 1024, isApproximate: false)
+        let approx = StorageCategorySize(kind: .caches, byteSize: 1024, isApproximate: true)
+        XCTAssertFalse(exact.formattedSize.hasPrefix("~"))
+        XCTAssertTrue(approx.formattedSize.hasPrefix("~"))
+    }
+
     private func writeLargeJPEG(named name: String, width: Int, height: Int) throws -> URL {
         let url = tempRoot.appendingPathComponent(name)
         let colorSpace = CGColorSpaceCreateDeviceRGB()

@@ -41,7 +41,7 @@ public final class CacheCleaner: @unchecked Sendable {
             let name = child.lastPathComponent
             if name.lowercased().hasPrefix("com.apple.") { continue }
 
-            let size = overview.sizeOfDirectory(at: child, maxItems: 3_000)
+            let size = overview.sizeOfDirectory(at: child, maxItems: 3_000).bytes
             guard size > 0 else { continue }
 
             let owner = inferOwner(from: name)

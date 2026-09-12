@@ -88,8 +88,12 @@ public final class UninstallService: @unchecked Sendable {
         storageOverview.snapshot()
     }
 
-    public func scanLargeFiles(minimumBytes: Int64 = 100 * 1024 * 1024) -> [LargeFileItem] {
-        largeFiles.scan(minimumBytes: minimumBytes)
+    public func scanLargeFiles(
+        minimumBytes: Int64 = 100 * 1024 * 1024,
+        includeExpandedHome: Bool? = nil
+    ) -> [LargeFileItem] {
+        let expand = includeExpandedHome ?? hasFullDiskAccess()
+        return largeFiles.scan(minimumBytes: minimumBytes, includeExpandedHome: expand)
     }
 
     public func scanCaches() -> [CacheItem] {

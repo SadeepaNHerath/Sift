@@ -52,6 +52,7 @@ targets:
       - path: UninstallerHelper
         excludes:
           - "*.plist"
+      - path: UninstallerCore/Sources/Safety/PathAllowlist.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.safeuninstaller.UninstallerHelper

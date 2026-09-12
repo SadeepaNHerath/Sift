@@ -14,13 +14,20 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         let home = fileManager.homeDirectoryForCurrentUser
         let (total, available) = volumeCapacity(for: home)
 
+        let apps = sizeOfDirectory(at: URL(fileURLWithPath: "/Applications"), maxItems: 800)
+        let caches = sizeOfDirectory(at: home.appendingPathComponent("Library/Caches"), maxItems: 4_000)
+        let downloads = sizeOfDirectory(at: home.appendingPathComponent("Downloads"), maxItems: 3_000)
+        let movies = sizeOfDirectory(at: home.appendingPathComponent("Movies"), maxItems: 2_000)
+        let developer = developerFootprint(home: home)
+        let trash = trashSizeDetailed()
+
         let categories: [StorageCategorySize] = [
-            StorageCategorySize(kind: .applications, byteSize: sizeOfDirectory(at: URL(fileURLWithPath: "/Applications"), maxItems: 800)),
-            StorageCategorySize(kind: .caches, byteSize: sizeOfDirectory(at: home.appendingPathComponent("Library/Caches"), maxItems: 4_000)),
-            StorageCategorySize(kind: .downloads, byteSize: sizeOfDirectory(at: home.appendingPathComponent("Downloads"), maxItems: 3_000)),
-            StorageCategorySize(kind: .movies, byteSize: sizeOfDirectory(at: home.appendingPathComponent("Movies"), maxItems: 2_000)),
-            StorageCategorySize(kind: .developer, byteSize: developerFootprint(home: home)),
-            StorageCategorySize(kind: .trash, byteSize: trashSize())
+            StorageCategorySize(kind: .applications, byteSize: apps.bytes, isApproximate: apps.isApproximate),
+            StorageCategorySize(kind: .caches, byteSize: caches.bytes, isApproximate: caches.isApproximate),
+            StorageCategorySize(kind: .downloads, byteSize: downloads.bytes, isApproximate: downloads.isApproximate),
+            StorageCategorySize(kind: .movies, byteSize: movies.bytes, isApproximate: movies.isApproximate),
+            StorageCategorySize(kind: .developer, byteSize: developer.bytes, isApproximate: developer.isApproximate),
+            StorageCategorySize(kind: .trash, byteSize: trash.bytes, isApproximate: trash.isApproximate)
         ]
 
         return StorageOverview(
@@ -31,6 +38,10 @@ public final class StorageOverviewEngine: @unchecked Sendable {
     }
 
     public func trashSize() -> Int64 {
+        trashSizeDetailed().bytes
+    }
+
+    private func trashSizeDetailed() -> (bytes: Int64, isApproximate: Bool) {
         let trash = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash")
         return sizeOfDirectory(at: URL(fileURLWithPath: trash), maxItems: 5_000)
     }
@@ -48,7 +59,7 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         return (total, available)
     }
 
-    private func developerFootprint(home: URL) -> Int64 {
+    private func developerFootprint(home: URL) -> (bytes: Int64, isApproximate: Bool) {
         let roots = [
             home.appendingPathComponent("Library/Developer"),
             home.appendingPathComponent(".npm"),
@@ -56,34 +67,45 @@ public final class StorageOverviewEngine: @unchecked Sendable {
             home.appendingPathComponent(".m2/repository"),
             home.appendingPathComponent("Library/Caches/Homebrew")
         ]
-        return roots.reduce(0) { $0 + sizeOfDirectory(at: $1, maxItems: 2_500) }
+        var total: Int64 = 0
+        var approx = false
+        for root in roots {
+            let result = sizeOfDirectory(at: root, maxItems: 2_500)
+            total += result.bytes
+            if result.isApproximate { approx = true }
+        }
+        return (total, approx)
     }
 
     /// Caps traversal so Overview stays responsive on large disks.
-    public func sizeOfDirectory(at url: URL, maxItems: Int = 5_000) -> Int64 {
+    public func sizeOfDirectory(at url: URL, maxItems: Int = 5_000) -> (bytes: Int64, isApproximate: Bool) {
         var isDir: ObjCBool = false
-        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDir) else { return 0 }
+        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDir) else { return (0, false) }
         if !isDir.boolValue {
             let values = try? url.resourceValues(forKeys: [.fileSizeKey])
-            return Int64(values?.fileSize ?? 0)
+            return (Int64(values?.fileSize ?? 0), false)
         }
 
         var total: Int64 = 0
         var count = 0
+        var hitCap = false
         guard let enumerator = fileManager.enumerator(
             at: url,
             includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]
-        ) else { return 0 }
+        ) else { return (0, false) }
 
         while let item = enumerator.nextObject() as? URL {
             count += 1
-            if count > maxItems { break }
+            if count > maxItems {
+                hitCap = true
+                break
+            }
             if let values = try? item.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
                values.isRegularFile == true {
                 total += Int64(values.fileSize ?? 0)
             }
         }
-        return total
+        return (total, hitCap)
     }
 }

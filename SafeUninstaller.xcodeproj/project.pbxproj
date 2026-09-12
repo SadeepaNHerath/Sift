@@ -36,6 +36,7 @@
 		B2C486AE1E174E216E3ECE85 /* UninstallerCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		B4939F99C7D8BEE0242E2FC4 /* UninstallerCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419466EDAFF1BA0DDB78C081 /* UninstallerCore.framework */; };
 		C5267272413FE16B5173E1E5 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBBCB88BDDD79423471CD2CE /* ContentView.swift */; };
+		CD95CD549846BBE99C327704 /* PathAllowlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7DE85820F944C570D53F2D /* PathAllowlist.swift */; };
 		CD9DC4C3E3F8FFDAF3AF50CF /* HelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AB329A20EA4571AFED9729 /* HelperProtocol.swift */; };
 		CE6AD1BDE6862087CFED91A2 /* StorageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 477C3150815E4DCC42CA92EB /* StorageModels.swift */; };
 		D323BF01437D83719ACA5E4D /* LargeFileScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC43C7DADFC3DDB999FF221 /* LargeFileScanner.swift */; };
@@ -532,6 +533,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CD95CD549846BBE99C327704 /* PathAllowlist.swift in Sources */,
 				AC2A2A199BF875DDDFD906E4 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

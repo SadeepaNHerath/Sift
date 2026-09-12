@@ -37,14 +37,18 @@ public struct StorageCategorySize: Identifiable, Sendable {
     public var id: String { kind.rawValue }
     public let kind: StorageCategoryKind
     public let byteSize: Int64
+    /// True when directory sizing hit the sample cap (Overview only).
+    public let isApproximate: Bool
 
-    public init(kind: StorageCategoryKind, byteSize: Int64) {
+    public init(kind: StorageCategoryKind, byteSize: Int64, isApproximate: Bool = false) {
         self.kind = kind
         self.byteSize = byteSize
+        self.isApproximate = isApproximate
     }
 
     public var formattedSize: String {
-        ByteCountFormatter.string(fromByteCount: byteSize, countStyle: .file)
+        let raw = ByteCountFormatter.string(fromByteCount: byteSize, countStyle: .file)
+        return isApproximate ? "~\(raw)" : raw
     }
 }
 
@@ -138,6 +142,39 @@ public enum VideoQualityPreset: String, Codable, Sendable, CaseIterable, Identif
         case .smaller: return "1080p HEVC / medium — max savings"
         case .balanced: return "HEVC high quality — good size/quality"
         case .higherQuality: return "HEVC highest / 4K when source allows"
+        }
+    }
+
+    /// Rough fraction of source bitrate used for pre-compress estimates.
+    public var estimateScale: Double {
+        switch self {
+        case .smaller: return 0.45
+        case .balanced: return 0.70
+        case .higherQuality: return 0.90
+        }
+    }
+}
+
+public enum ImageOutputFormat: String, Codable, Sendable, CaseIterable, Identifiable {
+    case automatic
+    case heic
+    case jpeg
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .automatic: return "Automatic"
+        case .heic: return "HEIC"
+        case .jpeg: return "JPEG"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .automatic: return "Pick whichever of HEIC or JPEG is smaller"
+        case .heic: return "Force HEIC when it is smaller than the original"
+        case .jpeg: return "Force JPEG (~0.7 quality) when smaller"
         }
     }
 }

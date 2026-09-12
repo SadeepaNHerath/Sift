@@ -10,17 +10,31 @@ public final class CLICleanupRunner: @unchecked Sendable {
         case simctl
     }
 
+    public static let defaultTimeout: TimeInterval = 120
+
+    /// Directories prepended when resolving tools and when spawning Process (Dock-launched PATH fix).
+    public static let augmentedPathDirectories: [String] = [
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/bin",
+        (NSHomeDirectory() as NSString).appendingPathComponent(".local/bin")
+    ]
+
     private let fileManager: FileManager
     private let pathResolver: (String) -> String?
+    private let timeout: TimeInterval
 
     public init(
         fileManager: FileManager = .default,
-        pathResolver: @escaping (String) -> String? = { name in
-            CLICleanupRunner.which(name)
-        }
+        timeout: TimeInterval = CLICleanupRunner.defaultTimeout,
+        pathResolver: ((String) -> String?)? = nil
     ) {
         self.fileManager = fileManager
-        self.pathResolver = pathResolver
+        self.timeout = timeout
+        self.pathResolver = pathResolver ?? { name in
+            CLICleanupRunner.resolveExecutable(named: name, fileManager: fileManager)
+        }
     }
 
     public func availableActions() -> [CLICleanupAction] {
@@ -78,7 +92,6 @@ public final class CLICleanupRunner: @unchecked Sendable {
             launchPath = executable
             arguments = ["cache", "clean", "--force"]
         case .simctl:
-            // Prefer xcrun when available; fall back to simctl path.
             if let xcrun = pathResolver("xcrun") {
                 launchPath = xcrun
                 arguments = ["simctl", "delete", "unavailable"]
@@ -89,6 +102,11 @@ public final class CLICleanupRunner: @unchecked Sendable {
         }
 
         return execute(toolID: tool.rawValue, launchPath: launchPath, arguments: arguments)
+    }
+
+    /// Exposed for tests (timeout + PATH environment).
+    public func runProcess(toolID: String, launchPath: String, arguments: [String]) -> CLICleanupResult {
+        execute(toolID: toolID, launchPath: launchPath, arguments: arguments)
     }
 
     private func resolveExecutable(for tool: ToolID) -> String? {
@@ -108,6 +126,12 @@ public final class CLICleanupRunner: @unchecked Sendable {
         process.executableURL = URL(fileURLWithPath: launchPath)
         process.arguments = arguments
 
+        var env = ProcessInfo.processInfo.environment
+        let inherited = env["PATH"] ?? "/usr/bin:/bin"
+        let prefix = Self.augmentedPathDirectories.joined(separator: ":")
+        env["PATH"] = prefix + ":" + inherited
+        process.environment = env
+
         let outPipe = Pipe()
         let errPipe = Pipe()
         process.standardOutput = outPipe
@@ -115,13 +139,33 @@ public final class CLICleanupRunner: @unchecked Sendable {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return CLICleanupResult(
                 toolID: toolID,
                 success: false,
                 summary: error.localizedDescription
             )
+        }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while process.isRunning {
+            if Date() >= deadline {
+                process.terminate()
+                // Give it a moment to exit after SIGTERM.
+                let grace = Date().addingTimeInterval(2)
+                while process.isRunning && Date() < grace {
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+                if process.isRunning {
+                    kill(process.processIdentifier, SIGKILL)
+                }
+                return CLICleanupResult(
+                    toolID: toolID,
+                    success: false,
+                    summary: "Timed out after \(Int(timeout))s"
+                )
+            }
+            Thread.sleep(forTimeInterval: 0.05)
         }
 
         let stdout = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
@@ -141,10 +185,25 @@ public final class CLICleanupRunner: @unchecked Sendable {
         return CLICleanupResult(toolID: toolID, success: success, summary: summary)
     }
 
+    /// Resolve an executable from well-known dirs, then `which`.
+    public static func resolveExecutable(named name: String, fileManager: FileManager = .default) -> String? {
+        for dir in augmentedPathDirectories {
+            let candidate = (dir as NSString).appendingPathComponent(name)
+            if fileManager.isExecutableFile(atPath: candidate) {
+                return candidate
+            }
+        }
+        return which(name)
+    }
+
     public static func which(_ name: String) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         process.arguments = [name]
+        var env = ProcessInfo.processInfo.environment
+        let inherited = env["PATH"] ?? "/usr/bin:/bin"
+        env["PATH"] = augmentedPathDirectories.joined(separator: ":") + ":" + inherited
+        process.environment = env
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = Pipe()
