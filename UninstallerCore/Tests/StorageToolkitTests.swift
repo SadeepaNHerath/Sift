@@ -271,6 +271,24 @@ final class StorageToolkitTests: XCTestCase {
         XCTAssertTrue(approx.formattedSize.hasPrefix("~"))
     }
 
+    func testDiagnosticsLogWritesAndTails() {
+        let log = DiagnosticsLog(fileManager: .default, maxBytes: 1_000_000)
+        log.info("unit-test-line-\(UUID().uuidString)")
+        // Allow async append to flush
+        let exp = expectation(description: "log flush")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { exp.fulfill() }
+        wait(for: [exp], timeout: 2)
+        let tail = log.tailLines(50)
+        XCTAssertTrue(tail.contains("unit-test-line-") || tail.contains("INFO"), tail)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: log.fileURL.path))
+    }
+
+    func testOverviewTimeBudgetReturns() {
+        let engine = StorageOverviewEngine()
+        let result = engine.sizeOfDirectory(at: FileManager.default.temporaryDirectory, maxItems: 10, timeBudget: 0.01)
+        XCTAssertGreaterThanOrEqual(result.bytes, 0)
+    }
+
     private func writeLargeJPEG(named name: String, width: Int, height: Int) throws -> URL {
         let url = tempRoot.appendingPathComponent(name)
         let colorSpace = CGColorSpaceCreateDeviceRGB()

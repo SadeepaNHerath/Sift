@@ -21,7 +21,7 @@ struct OverviewView: View {
                     emptyTrashCard
                     quickLinks
                 } else {
-                    Button("Measure Storage") { model.refreshStorageOverview() }
+                    Button("Measure Storage") { model.refreshStorageOverview(remeasure: true) }
                         .buttonStyle(.borderedProminent)
                 }
             }
@@ -31,7 +31,7 @@ struct OverviewView: View {
         .toolbar {
             ToolbarItem {
                 Button {
-                    model.refreshStorageOverview()
+                    model.refreshStorageOverview(remeasure: true)
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -62,7 +62,7 @@ struct OverviewView: View {
     private func categoryList(_ overview: StorageOverview) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Where space goes").font(.headline)
-            Text("Folder totals are sampled so the dashboard stays fast; very large folders can read a bit low (~).")
+            Text("Folder totals are sampled with a time budget so the dashboard stays fast; very large folders can read a bit low (~). Refresh remeasures more deeply.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             let maxSize = max(overview.categories.map(\.byteSize).max() ?? 1, 1)

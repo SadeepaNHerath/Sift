@@ -23,6 +23,20 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "E14B2406EA1D131832BD5166"
+               BuildableName = "SafeUninstallerUITests.xctest"
+               BlueprintName = "SafeUninstallerUITests"
+               ReferencedContainer = "container:SafeUninstaller.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
@@ -75,6 +89,17 @@
                BlueprintIdentifier = "5B0FD631F0CA360A5AB24DD5"
                BuildableName = "UninstallerCoreTests.xctest"
                BlueprintName = "UninstallerCoreTests"
+               ReferencedContainer = "container:SafeUninstaller.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "E14B2406EA1D131832BD5166"
+               BuildableName = "SafeUninstallerUITests.xctest"
+               BlueprintName = "SafeUninstallerUITests"
                ReferencedContainer = "container:SafeUninstaller.xcodeproj">
             </BuildableReference>
          </TestableReference>

@@ -10,6 +10,7 @@ struct ContentView: View {
                 ForEach(AppViewModel.SidebarItem.allCases) { item in
                     Label(item.rawValue, systemImage: item.systemImage)
                         .tag(item)
+                        .accessibilityIdentifier("sidebar.\(item.rawValue)")
                 }
                 if !model.hasFDA {
                     Divider()
@@ -198,6 +199,22 @@ struct SetupSheet: View {
                 .font(.title2.bold())
             Text("Free space by uninstalling apps completely, clearing caches, compressing videos, and removing developer leftovers you no longer need. Nothing is deleted until you review and confirm.")
                 .foregroundStyle(.secondary)
+
+            GroupBox("Unsigned build") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("This build is ad-hoc signed (no paid Apple Developer certificate). The first time you open it, macOS Gatekeeper may block the app — use Right-click → Open → Open once.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("The /Library privileged helper stays unavailable without a Developer ID. Personal ~/Library cleanup, caches, large files, and developer tools still work.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Diagnostics stay on this Mac (Help → Copy Diagnostics). No telemetry is sent.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(4)
+            }
 
             GroupBox("Full Disk Access") {
                 VStack(alignment: .leading, spacing: 8) {

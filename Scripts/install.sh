@@ -58,7 +58,6 @@ if [[ -f "$ZIP_URL" ]]; then
   cp "$ZIP_URL" "$ZIP_FILE"
 elif [[ "$ZIP_URL" == file://* ]]; then
   LOCAL_PATH="${ZIP_URL#file://}"
-  # Decode minimal %20 for spaces in file URLs
   LOCAL_PATH="$(printf '%b' "${LOCAL_PATH//%/\\x}")"
   cp "$LOCAL_PATH" "$ZIP_FILE"
 else
@@ -82,18 +81,35 @@ fi
 
 ditto "$APP_SRC" "$APP_DEST"
 
-# Clear Gatekeeper quarantine so a downloaded build can launch after user confirmation.
+echo "Clearing Gatekeeper quarantine attributes…"
 xattr -dr com.apple.quarantine "$APP_DEST" 2>/dev/null || true
+xattr -cr "$APP_DEST" 2>/dev/null || true
+
+if xattr -l "$APP_DEST" 2>/dev/null | grep -q com.apple.quarantine; then
+  echo "warning: quarantine attribute may still be present — use Right-click → Open on first launch"
+else
+  echo "Quarantine attribute cleared."
+fi
 
 echo ""
 echo "Installed: $APP_DEST"
 echo ""
-echo "First launch:"
-echo "  • If macOS blocks the app: Right-click SafeUninstaller → Open → Open"
-echo "  • Grant Full Disk Access: System Settings → Privacy & Security → Full Disk Access"
+echo "First launch checklist:"
+echo "  1. If macOS says the app can’t be opened:"
+echo "       Finder → Right-click SafeUninstaller → Open → Open"
+echo "     (required once for ad-hoc / unsigned builds — no paid Apple account)"
+echo "  2. Grant Full Disk Access:"
+echo "       System Settings → Privacy & Security → Full Disk Access"
+echo "  3. Empty Trash may ask for Automation (Finder) the first time."
 echo ""
+if command -v spctl >/dev/null 2>&1; then
+  echo "Gatekeeper assess (informational):"
+  spctl --assess --type execute -v "$APP_DEST" 2>&1 || true
+  echo ""
+fi
 echo "Note: This build is ad-hoc signed (no paid Apple Developer certificate)."
 echo "User Library cleanup works. The privileged /Library helper stays unavailable."
+echo "Diagnostics stay on-device (Help → Copy Diagnostics). No telemetry."
 echo ""
 
 if command -v open >/dev/null 2>&1; then

@@ -17,6 +17,12 @@ struct SafeUninstallerApp: App {
         .defaultSize(width: 1100, height: 720)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    UpdateController.shared.checkForUpdates()
+                }
+                .disabled(!UpdateController.shared.isConfigured)
+            }
             CommandMenu("Clean") {
                 Button("Refresh Applications") { model.refreshApps() }
                     .keyboardShortcut("r", modifiers: [.command])
@@ -29,6 +35,14 @@ struct SafeUninstallerApp: App {
                 Button("Review & Move to Trash…") { model.requestUninstall() }
                     .keyboardShortcut("t", modifiers: [.command, .shift])
                     .disabled(model.selectedCount == 0)
+            }
+            CommandGroup(replacing: .help) {
+                Button("SafeUninstaller Help") {
+                    model.showSetupSheet = true
+                }
+                Button("Copy Diagnostics") {
+                    model.copyDiagnostics()
+                }
             }
         }
     }

@@ -10,16 +10,16 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    public func snapshot() -> StorageOverview {
+    public func snapshot(maxItems: Int = 50_000, timeBudget: TimeInterval = 2.0) -> StorageOverview {
         let home = fileManager.homeDirectoryForCurrentUser
         let (total, available) = volumeCapacity(for: home)
 
-        let apps = sizeOfDirectory(at: URL(fileURLWithPath: "/Applications"), maxItems: 800)
-        let caches = sizeOfDirectory(at: home.appendingPathComponent("Library/Caches"), maxItems: 4_000)
-        let downloads = sizeOfDirectory(at: home.appendingPathComponent("Downloads"), maxItems: 3_000)
-        let movies = sizeOfDirectory(at: home.appendingPathComponent("Movies"), maxItems: 2_000)
-        let developer = developerFootprint(home: home)
-        let trash = trashSizeDetailed()
+        let apps = sizeOfDirectory(at: URL(fileURLWithPath: "/Applications"), maxItems: maxItems, timeBudget: timeBudget)
+        let caches = sizeOfDirectory(at: home.appendingPathComponent("Library/Caches"), maxItems: maxItems, timeBudget: timeBudget)
+        let downloads = sizeOfDirectory(at: home.appendingPathComponent("Downloads"), maxItems: maxItems, timeBudget: timeBudget)
+        let movies = sizeOfDirectory(at: home.appendingPathComponent("Movies"), maxItems: maxItems, timeBudget: timeBudget)
+        let developer = developerFootprint(home: home, maxItems: maxItems, timeBudget: timeBudget)
+        let trash = trashSizeDetailed(maxItems: maxItems, timeBudget: timeBudget)
 
         let categories: [StorageCategorySize] = [
             StorageCategorySize(kind: .applications, byteSize: apps.bytes, isApproximate: apps.isApproximate),
@@ -41,9 +41,9 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         trashSizeDetailed().bytes
     }
 
-    private func trashSizeDetailed() -> (bytes: Int64, isApproximate: Bool) {
+    private func trashSizeDetailed(maxItems: Int = 50_000, timeBudget: TimeInterval = 2.0) -> (bytes: Int64, isApproximate: Bool) {
         let trash = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash")
-        return sizeOfDirectory(at: URL(fileURLWithPath: trash), maxItems: 5_000)
+        return sizeOfDirectory(at: URL(fileURLWithPath: trash), maxItems: maxItems, timeBudget: timeBudget)
     }
 
     private func volumeCapacity(for url: URL) -> (total: Int64, available: Int64) {
@@ -59,7 +59,11 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         return (total, available)
     }
 
-    private func developerFootprint(home: URL) -> (bytes: Int64, isApproximate: Bool) {
+    private func developerFootprint(
+        home: URL,
+        maxItems: Int,
+        timeBudget: TimeInterval
+    ) -> (bytes: Int64, isApproximate: Bool) {
         let roots = [
             home.appendingPathComponent("Library/Developer"),
             home.appendingPathComponent(".npm"),
@@ -69,16 +73,21 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         ]
         var total: Int64 = 0
         var approx = false
+        let perRoot = max(0.4, timeBudget / Double(max(roots.count, 1)))
         for root in roots {
-            let result = sizeOfDirectory(at: root, maxItems: 2_500)
+            let result = sizeOfDirectory(at: root, maxItems: maxItems, timeBudget: perRoot)
             total += result.bytes
             if result.isApproximate { approx = true }
         }
         return (total, approx)
     }
 
-    /// Caps traversal so Overview stays responsive on large disks.
-    public func sizeOfDirectory(at url: URL, maxItems: Int = 5_000) -> (bytes: Int64, isApproximate: Bool) {
+    /// Caps traversal by item count and wall-clock time so Overview stays responsive.
+    public func sizeOfDirectory(
+        at url: URL,
+        maxItems: Int = 50_000,
+        timeBudget: TimeInterval = 2.0
+    ) -> (bytes: Int64, isApproximate: Bool) {
         var isDir: ObjCBool = false
         guard fileManager.fileExists(atPath: url.path, isDirectory: &isDir) else { return (0, false) }
         if !isDir.boolValue {
@@ -89,6 +98,7 @@ public final class StorageOverviewEngine: @unchecked Sendable {
         var total: Int64 = 0
         var count = 0
         var hitCap = false
+        let deadline = Date().addingTimeInterval(timeBudget)
         guard let enumerator = fileManager.enumerator(
             at: url,
             includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .isDirectoryKey],
@@ -97,7 +107,7 @@ public final class StorageOverviewEngine: @unchecked Sendable {
 
         while let item = enumerator.nextObject() as? URL {
             count += 1
-            if count > maxItems {
+            if count > maxItems || Date() >= deadline {
                 hitCap = true
                 break
             }
