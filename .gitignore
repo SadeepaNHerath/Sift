@@ -1,3 +1,5 @@
+sparkle-private/
+dist/sparkle-tools/
 .DS_Store
 DerivedData/
 *.xcuserdata

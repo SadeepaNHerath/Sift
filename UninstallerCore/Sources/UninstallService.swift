@@ -88,6 +88,11 @@ public final class UninstallService: @unchecked Sendable {
         storageOverview.snapshot()
     }
 
+    /// Deeper remeasure used after the first Overview paint.
+    public func storageSnapshotDeep() -> StorageOverview {
+        storageOverview.snapshot(maxItems: 100_000, timeBudget: 5.0)
+    }
+
     public func scanLargeFiles(
         minimumBytes: Int64 = 100 * 1024 * 1024,
         includeExpandedHome: Bool? = nil

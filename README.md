@@ -1,8 +1,26 @@
 # SafeUninstaller
 
-Intelligent, safety-first application uninstallation for macOS.
+Intelligent, safety-first application uninstallation and low-storage toolkit for macOS.
 
-**You do not need a paid Apple Developer account or the Mac App Store** to build, share, or install this app. Ad-hoc signed builds clean personal `~/Library` leftovers. A paid Developer ID is only required later if you want Gatekeeper-silent distribution or the optional `/Library` privileged helper.
+**You do not need a paid Apple Developer account or the Mac App Store** to build, share, or install this app. Ad-hoc signed builds clean personal `~/Library` leftovers, compress media, and clear caches. A paid Developer ID is only required later if you want Gatekeeper-silent distribution or the optional `/Library` privileged helper.
+
+## Distribute without Apple Developer ID (checklist)
+
+1. **One-time Sparkle keys** (for auto-update):
+   ```bash
+   chmod +x Scripts/generate-sparkle-keys.sh
+   ./Scripts/generate-sparkle-keys.sh
+   ```
+   Commit `SafeUninstaller/Resources/sparkle-public-ed-key.txt`. Keep `sparkle-private/ed-private-key.txt` secret (gitignored).
+2. **Package**:
+   ```bash
+   chmod +x Scripts/package-release.sh Scripts/install.sh
+   RELEASE_REPO=OWNER/REPO ./Scripts/package-release.sh
+   ```
+   Or without updates: `./Scripts/package-release.sh` (Sparkle stays disabled until feed keys are embedded).
+3. **GitHub Release** — upload `SafeUninstaller-x.y.z.zip`, `.sha256`, and `appcast.xml` (appcast must be reachable at `…/releases/latest/download/appcast.xml`).
+4. **Users install** via `Scripts/install.sh` or manual unzip → Right-click → Open once → grant Full Disk Access (+ Automation for Empty Trash).
+5. **Help → Copy Diagnostics** if something goes wrong (on-device log only; no telemetry).
 
 ## Install without App Store
 
@@ -19,8 +37,8 @@ Or unzip `dist/SafeUninstaller-1.0.0.zip` and move `SafeUninstaller.app` into **
 
 ### Option B — GitHub Releases
 
-1. Upload `SafeUninstaller-1.0.0.zip` (and `.sha256`) to a GitHub Release.
-2. Users download the zip, unzip, and move the app into Applications / ~/Applications.
+1. Upload `SafeUninstaller-1.0.0.zip`, `.sha256`, and `appcast.xml` to a GitHub Release.
+2. Users download the zip, unzip, and move the app into Applications / ~/Applications — or use Option C.
 3. Right-click → Open once if Gatekeeper warns; grant Full Disk Access.
 
 ### Option C — Terminal install from a published Release
@@ -47,17 +65,20 @@ The installer places the app in `~/Applications`, clears the quarantine attribut
 |---|---|
 | Scan apps + clean `~/Library` leftovers | Yes |
 | Move items to Trash + audit reports | Yes |
+| Sparkle auto-update (EdDSA + GitHub Releases) | Yes (after keys + appcast) |
+| Local diagnostics (Help → Copy Diagnostics) | Yes |
 | Full Disk Access | Yes (user grants it) |
 | Double-click with no Gatekeeper warning | No — users Right-click → Open once (or use `install.sh`) |
 | Privileged helper for `/Library` | No — needs Developer ID |
 
 ## Package a release
 
-On a Mac with Xcode:
-
 ```bash
-cd "Mac Issue"   # or your clone path
-chmod +x Scripts/package-release.sh Scripts/install.sh
+cd "Mac Issue"
+chmod +x Scripts/package-release.sh Scripts/install.sh Scripts/generate-sparkle-keys.sh
+# With Sparkle updates:
+RELEASE_REPO=OWNER/REPO ./Scripts/package-release.sh
+# Without updates:
 ./Scripts/package-release.sh
 ```
 
@@ -65,22 +86,25 @@ Outputs:
 
 - `dist/SafeUninstaller-1.0.0.zip`
 - `dist/SafeUninstaller-1.0.0.zip.sha256`
+- `dist/appcast.xml` (when `RELEASE_REPO` / `SU_FEED_URL` is set)
 
-Create a GitHub Release (e.g. tag `v1.0.0`), upload both files, and share the download or terminal one-liner above.
+**Note:** New ad-hoc builds may still need Right-click → Open once after an update (Gatekeeper). Sparkle does not require a paid Apple account.
 
 ## Features
 
-- **Storage Overview** — free/total space and category breakdown, with Empty Trash
+- **Storage Overview** — free/total space and category breakdown (time-budgeted samples, `~` when approximate), with Empty Trash
 - Multi-signal **application resource attribution** with High / Medium / Low confidence
 - Orphaned-file (“Leftovers”) search for already-removed apps
-- **Large Files & Media** — Spotlight + FileManager merge for big files (Pictures included; Music/home with FDA); compress videos (AVFoundation HEVC presets) and photos (ImageIO HEIC/JPEG with format choice); originals go to Trash
-- **Caches** — clear third-party `~/Library/Caches` leaves safely
-- **Developer** — Xcode leftovers, package caches, per-project `node_modules` / Pods / venvs (manual select), plus confirmed `brew cleanup` / `npm cache clean` / `simctl delete unavailable` when those CLIs are installed
-- Trash-only removal, confirmation sheets, audit reports (`~/Library/Application Support/SafeUninstaller/Reports`, mode `0700`)
+- **Large Files & Media** — Spotlight + FileManager merge; video sample dry-run estimates + AVFoundation compress; ImageIO HEIC/JPEG
+- **Caches** / **Developer** cleanups + confirmed brew/npm/simctl CLIs
+- Sparkle auto-update when feed + EdDSA public key are packaged
+- On-device diagnostics log; Help → Copy Diagnostics
+- Trash-only removal, confirmation sheets, audit reports
 - Optional privileged helper for `/Library` (only when Developer ID–signed)
-- First-run Setup for Full Disk Access and Finder Automation (Empty Trash)
+- First-run Setup for unsigned-build notes, FDA, Automation
 
 Large-file discovery merges Spotlight (`MDQuery`) with a FileManager walk so a partial index never hides unindexed files.
+
 ## Build (development)
 
 ```bash
@@ -88,15 +112,18 @@ cd "Mac Issue"
 xcodegen generate
 xcodebuild -scheme SafeUninstaller -configuration Debug build
 xcodebuild -scheme UninstallerCore -destination 'platform=macOS' test
+xcodebuild -scheme SafeUninstaller -destination 'platform=macOS' test
 ```
 
 Open `SafeUninstaller.xcodeproj` in Xcode for day-to-day Debug / ad-hoc runs.
 
 ## Permissions
 
-1. **Full Disk Access** — System Settings → Privacy & Security → Full Disk Access. Needed for complete Library scans and expanded large-file roots. The app probes `~/Library/Application Support/com.apple.TCC` (or Shortcuts) — not Mail/Safari.
-2. **Automation (Finder)** — Empty Trash runs an AppleScript against Finder. macOS may ask once to allow SafeUninstaller to control Finder (Privacy & Security → Automation).
-3. **Privileged Helper (optional)** — only for root-owned `/Library` leftovers. Unavailable without a paid Developer ID certificate; user-Library cleanup does not need it.
+1. **Full Disk Access** — System Settings → Privacy & Security → Full Disk Access. Needed for complete Library scans and expanded large-file roots.
+2. **Automation (Finder)** — Empty Trash runs an AppleScript against Finder. macOS may ask once (Privacy & Security → Automation).
+3. **Privileged Helper (optional)** — only for root-owned `/Library` leftovers. Unavailable without a paid Developer ID certificate.
+
+Diagnostics are written to `~/Library/Logs/SafeUninstaller/app.log` and never uploaded by the app.
 
 ## Optional later: Developer ID + notarization
 
@@ -112,8 +139,8 @@ Until then, use the GitHub zip + `install.sh` path above.
 
 | Target | Role |
 |--------|------|
-| `UninstallerCore` | Identity, discovery, attribution, orphans, removal, XPC client |
-| `SafeUninstaller` | SwiftUI UI |
+| `UninstallerCore` | Identity, discovery, attribution, orphans, removal, storage toolkit, diagnostics |
+| `SafeUninstaller` | SwiftUI UI + Sparkle updater |
 | `UninstallerHelper` | Standalone privileged daemon (disabled unless properly signed) |
 
 ## Safety model
@@ -127,4 +154,8 @@ Until then, use the GitHub zip + `install.sh` path above.
 
 ```bash
 xcodebuild -scheme UninstallerCore -destination 'platform=macOS' test
+# UI smoke (ad-hoc signing — disable hardened runtime for the runner):
+xcodebuild -scheme SafeUninstaller -destination 'platform=macOS' \
+  CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO ENABLE_HARDENED_RUNTIME=NO \
+  -only-testing:SafeUninstallerUITests test
 ```

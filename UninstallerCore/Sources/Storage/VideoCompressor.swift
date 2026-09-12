@@ -29,7 +29,8 @@ public final class VideoCompressor: @unchecked Sendable {
         session?.cancelExport()
     }
 
-    /// Rough estimated output size from duration × track bitrate × quality scale.
+    /// Sample dry-run estimate: export first ≤12s with the same preset, then extrapolate.
+    /// Falls back to bitrate × scale heuristic on failure / timeout (~45s).
     public func estimate(path: String, quality: VideoQualityPreset = .balanced) async -> Int64? {
         if denylist.denyReason(for: path) != nil { return nil }
         let url = URL(fileURLWithPath: path)
@@ -37,12 +38,94 @@ public final class VideoCompressor: @unchecked Sendable {
         let originalSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
         guard originalSize > 0 else { return nil }
 
+        if let sample = await sampleExportEstimate(path: path, url: url, originalSize: originalSize, quality: quality) {
+            return sample
+        }
+        return await heuristicEstimate(url: url, originalSize: originalSize, quality: quality)
+    }
+
+    private func sampleExportEstimate(
+        path: String,
+        url: URL,
+        originalSize: Int64,
+        quality: VideoQualityPreset
+    ) async -> Int64? {
+        let asset = AVURLAsset(url: url)
+        let duration: CMTime
+        do {
+            duration = try await asset.load(.duration)
+        } catch {
+            return nil
+        }
+        let fullSeconds = CMTimeGetSeconds(duration)
+        guard fullSeconds.isFinite, fullSeconds > 0 else { return nil }
+
+        let sampleSeconds = min(12.0, fullSeconds)
+        let sampleDuration = CMTime(seconds: sampleSeconds, preferredTimescale: 600)
+        let timeRange = CMTimeRange(start: .zero, duration: sampleDuration)
+
+        let preset = await preferredPreset(for: asset, quality: quality)
+        guard let session = AVAssetExportSession(asset: asset, presetName: preset) else { return nil }
+
+        lock.lock()
+        activeSession = session
+        lock.unlock()
+        defer {
+            lock.lock()
+            if activeSession === session { activeSession = nil }
+            lock.unlock()
+        }
+
+        let tempDir = fileManager.temporaryDirectory.appendingPathComponent("SafeUninstallerVideoEstimate", isDirectory: true)
+        try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let outExt = preset.contains("HEVC") || path.lowercased().hasSuffix(".mp4") ? "mp4" : "mov"
+        let tempOut = tempDir.appendingPathComponent(UUID().uuidString + "." + outExt)
+        try? fileManager.removeItem(at: tempOut)
+
+        session.outputURL = tempOut
+        session.outputFileType = outExt == "mp4" ? .mp4 : .mov
+        session.shouldOptimizeForNetworkUse = true
+        session.timeRange = timeRange
+
+        let finished = await withTaskGroup(of: Bool.self) { group -> Bool in
+            group.addTask {
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    session.exportAsynchronously {
+                        continuation.resume()
+                    }
+                }
+                return true
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 45_000_000_000)
+                session.cancelExport()
+                return false
+            }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first && session.status == .completed
+        }
+
+        defer { try? fileManager.removeItem(at: tempOut) }
+
+        if session.status == .cancelled { return nil }
+        guard finished, session.status == .completed, fileManager.fileExists(atPath: tempOut.path) else {
+            return nil
+        }
+        let sampleBytes = (try? tempOut.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
+        guard sampleBytes > 0 else { return nil }
+
+        let extrapolated = Int64(Double(sampleBytes) * (fullSeconds / sampleSeconds))
+        return min(originalSize - 1, max(1, extrapolated))
+    }
+
+    private func heuristicEstimate(url: URL, originalSize: Int64, quality: VideoQualityPreset) async -> Int64? {
         let asset = AVURLAsset(url: url)
         do {
             let duration = try await asset.load(.duration)
             let seconds = CMTimeGetSeconds(duration)
             guard seconds.isFinite, seconds > 0 else {
-                return Int64(Double(originalSize) * quality.estimateScale)
+                return max(1, Int64(Double(originalSize) * quality.estimateScale))
             }
             let tracks = try await asset.loadTracks(withMediaType: .video)
             var bitsPerSecond: Float = 0

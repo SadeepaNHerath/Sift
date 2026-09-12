@@ -5,6 +5,10 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
   groupSortPosition: top
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.4
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -91,6 +95,8 @@ targets:
       - target: UninstallerHelper
         embed: false
         link: false
+      - package: Sparkle
+        product: Sparkle
     postCompileScripts:
       - name: Embed Helper Daemon
         basedOnDependencyAnalysis: false
@@ -113,6 +119,24 @@ targets:
           if [ -f "${PLIST_SRC}" ]; then
             cp -f "${PLIST_SRC}" "${DEST_DIR}/com.safeuninstaller.UninstallerHelper.plist"
           fi
+
+  SafeUninstallerUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: SafeUninstallerUITests
+    dependencies:
+      - target: SafeUninstaller
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeuninstaller.UITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: SafeUninstaller
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_REQUIRED: NO
+        ENABLE_HARDENED_RUNTIME: NO
+        OTHER_CODE_SIGN_FLAGS: "--deep"
 schemes:
   SafeUninstaller:
     build:
@@ -120,12 +144,14 @@ schemes:
         UninstallerCore: all
         UninstallerHelper: all
         SafeUninstaller: all
+        SafeUninstallerUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - UninstallerCoreTests
+        - SafeUninstallerUITests
   UninstallerCore:
     build:
       targets:

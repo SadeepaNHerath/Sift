@@ -88,7 +88,13 @@ final class AppViewModel: ObservableObject {
     @Published var lastReport: AuditReport?
     @Published var showConfirmSheet = false
     @Published var confirmMode: ConfirmMode = .uninstall
-    @Published var errorMessage: String?
+    @Published var errorMessage: String? {
+        didSet {
+            if let errorMessage {
+                DiagnosticsLog.shared.error(errorMessage)
+            }
+        }
+    }
     @Published var showSetupSheet = false
     @Published var setupDismissed = false
     @Published var isDropTargeted = false
@@ -198,12 +204,19 @@ final class AppViewModel: ObservableObject {
     }
 
     func bootstrap() {
+        DiagnosticsLog.shared.installExceptionHook()
+        DiagnosticsLog.shared.info("App bootstrap")
         service.removal.privilegedClient = HelperXPCClient.shared
         setupDismissed = UserDefaults.standard.bool(forKey: setupDismissKey)
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            setupDismissed = true
+            showSetupSheet = false
+        }
         refreshPermissions()
         refreshApps()
         refreshReports()
-        refreshStorageOverview()
+        refreshStorageOverview(remeasure: true)
+        UpdateController.shared.start()
         if !hasFDA && !setupDismissed {
             showSetupSheet = true
         }
@@ -225,7 +238,7 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Storage overview
 
-    func refreshStorageOverview() {
+    func refreshStorageOverview(remeasure: Bool = false) {
         isLoadingOverview = true
         statusMessage = "Measuring storage…"
         Task.detached(priority: .userInitiated) {
@@ -234,6 +247,13 @@ final class AppViewModel: ObservableObject {
                 self.storageOverview = snap
                 self.isLoadingOverview = false
                 self.statusMessage = "\(snap.formattedAvailable) free of \(snap.formattedTotal)"
+            }
+            if remeasure {
+                let deeper = UninstallService.shared.storageSnapshotDeep()
+                await MainActor.run {
+                    self.storageOverview = deeper
+                    self.statusMessage = "\(deeper.formattedAvailable) free of \(deeper.formattedTotal)"
+                }
             }
         }
     }
@@ -316,7 +336,7 @@ final class AppViewModel: ObservableObject {
                 let after = ByteCountFormatter.string(fromByteCount: estimated, countStyle: .file)
                 await MainActor.run {
                     if self.compressingPath == path {
-                        self.compressionEstimateText = "Estimated \(before) → ~\(after)"
+                        self.compressionEstimateText = "Sample estimate \(before) → ~\(after)"
                     }
                 }
             }
@@ -820,6 +840,30 @@ final class AppViewModel: ObservableObject {
                 toastMessage = nil
             }
         }
+    }
+
+    func copyDiagnostics() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        let os = ProcessInfo.processInfo.operatingSystemVersionString
+        let feedConfigured = UpdateController.shared.isConfigured
+        let body = """
+        SafeUninstaller diagnostics
+        ---------------------------
+        Version: \(version) (\(build))
+        macOS: \(os)
+        Full Disk Access: \(hasFDA ? "yes" : "no")
+        Helper: \(helperStatus)
+        Sparkle feed configured: \(feedConfigured ? "yes" : "no")
+        Log file: \(DiagnosticsLog.shared.fileURL.path)
+
+        Recent log:
+        \(DiagnosticsLog.shared.tailLines(200))
+        """
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(body, forType: .string)
+        DiagnosticsLog.shared.info("Diagnostics copied to pasteboard")
+        showToast("Diagnostics copied")
     }
 
     func icon(for app: AppIdentity) -> NSImage {
