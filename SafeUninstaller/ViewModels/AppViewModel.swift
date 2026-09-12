@@ -64,13 +64,16 @@ final class AppViewModel: ObservableObject {
     @Published var compressingPath: String?
     @Published var compressionProgress: Double = 0
     @Published var videoQualityPreset: VideoQualityPreset = .balanced
+    @Published var imageOutputFormat: ImageOutputFormat = .automatic
     @Published var lastCompressionSavings: String?
+    @Published var compressionEstimateText: String?
     @Published var cliCleanupActions: [CLICleanupAction] = []
     @Published var pendingCLIAction: CLICleanupAction?
     @Published var showCLICleanupConfirm = false
     @Published var isRunningCLICleanup = false
     @Published var cliCleanupSummary: String?
     @Published var showEmptyTrashConfirm = false
+    private var compressionTask: Task<Void, Never>?
 
     @Published var isListingApps = false
     @Published var isAnalyzing = false
@@ -108,7 +111,7 @@ final class AppViewModel: ObservableObject {
     var isBusy: Bool {
         isListingApps || isAnalyzing || isScanningOrphans || isRemoving
             || isLoadingOverview || isScanningLargeFiles || isScanningCaches
-            || isScanningDev || compressingPath != nil
+            || isScanningDev || compressingPath != nil || isRunningCLICleanup
     }
 
     var needsSetup: Bool {
@@ -297,20 +300,40 @@ final class AppViewModel: ObservableObject {
 
     func compressVideo(_ item: LargeFileItem) {
         guard item.isVideo else { return }
+        guard compressingPath == nil else { return }
         compressingPath = item.path
         compressionProgress = 0
         lastCompressionSavings = nil
+        compressionEstimateText = nil
         statusMessage = "Compressing \(item.displayName)…"
         let quality = videoQualityPreset
-        Task {
-            let result = await service.videoCompressor.compress(path: item.path, quality: quality) { fraction in
+        let path = item.path
+        let originalBytes = item.byteSize
+
+        compressionTask = Task {
+            if let estimated = await service.videoCompressor.estimate(path: path, quality: quality) {
+                let before = ByteCountFormatter.string(fromByteCount: originalBytes, countStyle: .file)
+                let after = ByteCountFormatter.string(fromByteCount: estimated, countStyle: .file)
+                await MainActor.run {
+                    if self.compressingPath == path {
+                        self.compressionEstimateText = "Estimated \(before) → ~\(after)"
+                    }
+                }
+            }
+
+            let result = await service.videoCompressor.compress(path: path, quality: quality) { fraction in
                 Task { @MainActor in
-                    self.compressionProgress = fraction
+                    if self.compressingPath == path {
+                        self.compressionProgress = fraction
+                    }
                 }
             }
             await MainActor.run {
+                guard self.compressingPath == path else { return }
                 self.compressingPath = nil
                 self.compressionProgress = 0
+                self.compressionEstimateText = nil
+                self.compressionTask = nil
                 if result.wasCancelled {
                     self.statusMessage = "Compression cancelled"
                     return
@@ -334,15 +357,39 @@ final class AppViewModel: ObservableObject {
 
     func compressImage(_ item: LargeFileItem) {
         guard item.isImage else { return }
+        guard compressingPath == nil else { return }
         compressingPath = item.path
         compressionProgress = 0
         lastCompressionSavings = nil
+        compressionEstimateText = nil
         statusMessage = "Compressing \(item.displayName)…"
-        Task.detached(priority: .userInitiated) {
-            let result = UninstallService.shared.imageCompressor.compress(path: item.path)
+        let path = item.path
+        let format = imageOutputFormat
+        let originalBytes = item.byteSize
+
+        compressionTask = Task.detached(priority: .userInitiated) {
+            let estimated = UninstallService.shared.imageCompressor.estimate(path: path, format: format)
+            if let estimated {
+                let before = ByteCountFormatter.string(fromByteCount: originalBytes, countStyle: .file)
+                let after = ByteCountFormatter.string(fromByteCount: estimated, countStyle: .file)
+                await MainActor.run {
+                    if self.compressingPath == path {
+                        self.compressionEstimateText = "Estimated \(before) → ~\(after)"
+                    }
+                }
+            }
+
+            let result = UninstallService.shared.imageCompressor.compress(path: path, format: format)
             await MainActor.run {
+                guard self.compressingPath == path else { return }
                 self.compressingPath = nil
                 self.compressionProgress = 0
+                self.compressionEstimateText = nil
+                self.compressionTask = nil
+                if result.wasCancelled {
+                    self.statusMessage = "Compression cancelled"
+                    return
+                }
                 if result.success {
                     let before = ByteCountFormatter.string(fromByteCount: result.originalBytes, countStyle: .file)
                     let after = ByteCountFormatter.string(fromByteCount: result.compressedBytes, countStyle: .file)
@@ -361,9 +408,13 @@ final class AppViewModel: ObservableObject {
 
     func cancelCompression() {
         service.videoCompressor.cancelActiveExport()
+        service.imageCompressor.cancelActive()
+        compressionTask?.cancel()
+        compressionTask = nil
         if compressingPath != nil {
             compressingPath = nil
             compressionProgress = 0
+            compressionEstimateText = nil
             statusMessage = "Compression cancelled"
         }
     }
@@ -732,6 +783,12 @@ final class AppViewModel: ObservableObject {
 
     func openLoginItemsSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    func openAutomationPrivacySettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
             NSWorkspace.shared.open(url)
         }
     }

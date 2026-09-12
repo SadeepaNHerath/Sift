@@ -69,7 +69,7 @@ public final class DevDependencyScanner: @unchecked Sendable {
             let url = home.appendingPathComponent(relative)
             guard fileManager.fileExists(atPath: url.path) else { return nil }
             if denylist.isDenied(path: url.path) { return nil }
-            let size = overview.sizeOfDirectory(at: url, maxItems: 4_000)
+            let size = overview.sizeOfDirectory(at: url, maxItems: 4_000).bytes
             guard size > 0 else { return nil }
             return DevDependencyItem(
                 path: url.path,
@@ -99,7 +99,7 @@ public final class DevDependencyScanner: @unchecked Sendable {
             let url = home.appendingPathComponent(relative)
             guard fileManager.fileExists(atPath: url.path) else { return nil }
             if denylist.isDenied(path: url.path) { return nil }
-            let size = overview.sizeOfDirectory(at: url, maxItems: 4_000)
+            let size = overview.sizeOfDirectory(at: url, maxItems: 4_000).bytes
             guard size > 0 else { return nil }
             return DevDependencyItem(
                 path: url.path,
@@ -187,7 +187,7 @@ public final class DevDependencyScanner: @unchecked Sendable {
             if isManifestAdjacentDependency(parent: root, folderName: name) {
                 if denylist.isDenied(path: child.path) { continue }
                 guard seen.insert(child.path).inserted else { continue }
-                let size = overview.sizeOfDirectory(at: child, maxItems: 3_000)
+                let size = overview.sizeOfDirectory(at: child, maxItems: 3_000).bytes
                 guard size > 0 else { continue }
                 let note: String
                 switch name {

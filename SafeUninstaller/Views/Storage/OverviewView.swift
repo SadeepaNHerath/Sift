@@ -62,6 +62,9 @@ struct OverviewView: View {
     private func categoryList(_ overview: StorageOverview) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Where space goes").font(.headline)
+            Text("Folder totals are sampled so the dashboard stays fast; very large folders can read a bit low (~).")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             let maxSize = max(overview.categories.map(\.byteSize).max() ?? 1, 1)
             ForEach(overview.categories) { cat in
                 Button {

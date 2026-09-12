@@ -7,7 +7,7 @@ struct LargeFilesPane: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Files over 100 MB in Downloads, Movies, Desktop, and Documents (Spotlight + fallback).")
+                Text("Files over 100 MB in Downloads, Movies, Desktop, Documents, and Pictures (Spotlight + FileManager). With Full Disk Access, Music and the rest of your home folder are included too.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -122,10 +122,30 @@ struct LargeFilesDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            GroupBox("Image format") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Format", selection: $model.imageOutputFormat) {
+                        ForEach(ImageOutputFormat.allCases) { format in
+                            Text(format.displayName).tag(format)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text(model.imageOutputFormat.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             if let path = model.compressingPath {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Compressing \((path as NSString).lastPathComponent)…")
                     ProgressView(value: model.compressionProgress > 0 ? model.compressionProgress : nil)
+                    if let estimate = model.compressionEstimateText {
+                        Text(estimate)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                     Button("Cancel") { model.cancelCompression() }
                 }
                 .padding()

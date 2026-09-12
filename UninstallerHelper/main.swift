@@ -3,6 +3,7 @@ import Security
 import os.log
 
 // MARK: - Standalone helper (no UninstallerCore link — avoids broken @rpath under LaunchDaemons)
+// PathAllowlist.swift is compiled into this target from UninstallerCore/Sources/Safety/
 
 private let helperLog = Logger(subsystem: "com.safeuninstaller.UninstallerHelper", category: "daemon")
 
@@ -19,111 +20,11 @@ private enum HelperIdentity {
     func ping(withReply reply: @escaping (String) -> Void)
 }
 
-// MARK: - Allowlist (duplicated intentionally — keep in sync with PathAllowlist)
-
-private enum HelperAllowlist {
-    static let allowedLibraryRoots: [String] = [
-        "/Library/LaunchAgents",
-        "/Library/LaunchDaemons",
-        "/Library/Application Support",
-        "/Library/Preferences",
-        "/Library/Caches",
-        "/Library/PrivilegedHelperTools"
-    ]
-
-    static let blockedLibraryPrefixes: [String] = [
-        "/Library/Apple",
-        "/Library/Keychains",
-        "/Library/Extensions",
-        "/Library/Frameworks",
-        "/Library/Security",
-        "/Library/Managed Preferences",
-        "/Library/Preferences/SystemConfiguration",
-        "/Library/SystemExtensions",
-        "/Library/OSAnalytics",
-        "/Library/Filesystems",
-        "/Library/GPUBundles",
-        "/Library/Image Capture",
-        "/Library/Printers",
-        "/Library/Updates",
-        "/Library/User Template",
-        "/Library/WebServer"
-    ]
-
-    static func trashDenialReason(for rawPath: String) -> String? {
-        if isSymlink(at: rawPath) {
-            return "Refusing to trash symlink leaves"
-        }
-        let resolved = URL(fileURLWithPath: rawPath).resolvingSymlinksInPath().path
-        let standardized = (resolved as NSString).standardizingPath
-
-        if standardized == "/" || standardized.isEmpty {
-            return "Refusing filesystem root"
-        }
-        if standardized == "/usr/local"
-            || standardized.hasPrefix("/usr/local/")
-            || standardized.hasPrefix("/usr/") {
-            return "Helper does not trash /usr or /usr/local"
-        }
-        for blocked in blockedLibraryPrefixes {
-            if standardized == blocked || standardized.hasPrefix(blocked + "/") {
-                return "Blocked system Library path: \(blocked)"
-            }
-        }
-        for root in allowedLibraryRoots {
-            if standardized == root {
-                return "Refusing to trash shared folder root: \(root)"
-            }
-            if standardized.hasPrefix(root + "/") {
-                let remainder = String(standardized.dropFirst(root.count + 1))
-                let components = remainder.split(separator: "/").map(String.init)
-                guard let first = components.first, !first.isEmpty else {
-                    return "Invalid path under \(root)"
-                }
-                if first.lowercased().hasPrefix("com.apple.") {
-                    return "Apple system component"
-                }
-                if root.hasSuffix("Application Support") {
-                    return nil
-                }
-                if components.count == 1 {
-                    return nil
-                }
-                return "Only single-leaf items allowed under \(root)"
-            }
-        }
-        return "Path not in privileged allowlist"
-    }
-
-    static func isValidLaunchdLabel(_ label: String) -> Bool {
-        let pattern = #"^[A-Za-z0-9][A-Za-z0-9._-]*$"#
-        guard label.range(of: pattern, options: .regularExpression) != nil else { return false }
-        if label.lowercased().hasPrefix("com.apple.") { return false }
-        if label.contains("..") || label.contains("/") { return false }
-        return true
-    }
-
-    static func isValidLaunchdDomain(_ domain: String, peerUID: uid_t?) -> Bool {
-        if domain == "system" { return true }
-        guard domain.hasPrefix("gui/") else { return false }
-        let rest = String(domain.dropFirst(4))
-        guard let value = UInt32(rest) else { return false }
-        if let peerUID, value != peerUID { return false }
-        return true
-    }
-
-    static func isSymlink(at path: String) -> Bool {
-        let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.isSymbolicLinkKey])
-        return values?.isSymbolicLink == true
-    }
-}
-
 // MARK: - Client validation
 
 private enum ClientValidator {
     static func isTrusted(connection: NSXPCConnection) -> Bool {
         #if DEBUG
-        // Ad-hoc local iteration: still prefer real validation when possible.
         if validateCodeSignature(connection: connection) {
             return true
         }
@@ -144,7 +45,6 @@ private enum ClientValidator {
             return false
         }
 
-        // Require our app bundle ID. When Developer ID signed, also pin Team ID if known.
         var requirementString = "identifier \"\(HelperIdentity.appBundleID)\""
         if let team = HelperIdentity.expectedTeamID, !team.isEmpty {
             requirementString += " and anchor apple generic and certificate leaf[subject.OU] = \"\(team)\""
@@ -205,13 +105,13 @@ final class HelperService: NSObject, UninstallerHelperProtocol {
     func trashItems(at paths: [String], withReply reply: @escaping ([String: String]) -> Void) {
         var results: [String: String] = [:]
         for path in paths {
-            if let reason = HelperAllowlist.trashDenialReason(for: path) {
+            if let reason = PathAllowlist.privilegedTrashDenialReason(for: path) {
                 helperLog.warning("Denied trash \(path): \(reason)")
                 results[path] = reason
                 continue
             }
             let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath()
-            if let reason = HelperAllowlist.trashDenialReason(for: resolved.path) {
+            if let reason = PathAllowlist.privilegedTrashDenialReason(for: resolved.path) {
                 results[path] = reason
                 continue
             }
@@ -227,11 +127,10 @@ final class HelperService: NSObject, UninstallerHelperProtocol {
     }
 
     func bootoutLaunchd(label: String, domain: String, withReply reply: @escaping (String?) -> Void) {
-        guard HelperAllowlist.isValidLaunchdLabel(label) else {
+        guard PathAllowlist.isValidLaunchdLabel(label) else {
             reply("Invalid launchd label")
             return
         }
-        // Privileged helper only boots out system-domain jobs.
         guard domain == "system" else {
             reply("Helper only supports system launchd domain")
             return

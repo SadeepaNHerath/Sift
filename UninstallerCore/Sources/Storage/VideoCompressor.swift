@@ -6,11 +6,13 @@ public final class VideoCompressor: @unchecked Sendable {
     public static let shared = VideoCompressor()
 
     private let fileManager: FileManager
+    private let denylist: SafetyDenylist
     private let lock = NSLock()
     private var activeSession: AVAssetExportSession?
 
-    public init(fileManager: FileManager = .default) {
+    public init(fileManager: FileManager = .default, denylist: SafetyDenylist = .shared) {
         self.fileManager = fileManager
+        self.denylist = denylist
     }
 
     public enum ProgressEvent: Sendable {
@@ -27,6 +29,37 @@ public final class VideoCompressor: @unchecked Sendable {
         session?.cancelExport()
     }
 
+    /// Rough estimated output size from duration × track bitrate × quality scale.
+    public func estimate(path: String, quality: VideoQualityPreset = .balanced) async -> Int64? {
+        if denylist.denyReason(for: path) != nil { return nil }
+        let url = URL(fileURLWithPath: path)
+        guard fileManager.fileExists(atPath: path) else { return nil }
+        let originalSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
+        guard originalSize > 0 else { return nil }
+
+        let asset = AVURLAsset(url: url)
+        do {
+            let duration = try await asset.load(.duration)
+            let seconds = CMTimeGetSeconds(duration)
+            guard seconds.isFinite, seconds > 0 else {
+                return Int64(Double(originalSize) * quality.estimateScale)
+            }
+            let tracks = try await asset.loadTracks(withMediaType: .video)
+            var bitsPerSecond: Float = 0
+            for track in tracks {
+                let rate = try await track.load(.estimatedDataRate)
+                if rate > 0 { bitsPerSecond += rate }
+            }
+            if bitsPerSecond <= 0 {
+                return max(1, Int64(Double(originalSize) * quality.estimateScale))
+            }
+            let estimated = Int64(Double(bitsPerSecond) * seconds / 8.0 * quality.estimateScale)
+            return min(originalSize - 1, max(1, estimated))
+        } catch {
+            return max(1, Int64(Double(originalSize) * quality.estimateScale))
+        }
+    }
+
     /// Compress one video. On success: original → Trash, compressed file takes its place.
     public func compress(
         path: String,
@@ -35,6 +68,17 @@ public final class VideoCompressor: @unchecked Sendable {
     ) async -> VideoCompressionResult {
         let url = URL(fileURLWithPath: path)
         let originalSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
+
+        if let reason = denylist.denyReason(for: path) {
+            return VideoCompressionResult(
+                originalPath: path,
+                outputPath: "",
+                originalBytes: originalSize,
+                compressedBytes: 0,
+                success: false,
+                errorMessage: reason
+            )
+        }
 
         guard fileManager.fileExists(atPath: path) else {
             return VideoCompressionResult(

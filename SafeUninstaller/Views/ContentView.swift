@@ -241,6 +241,17 @@ struct SetupSheet: View {
                 .padding(4)
             }
 
+            GroupBox("Automation (Empty Trash)") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Empty Trash asks Finder to permanently delete items. macOS may prompt once for Automation permission so SafeUninstaller can control Finder.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Open Privacy…") { model.openAutomationPrivacySettings() }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(4)
+            }
+
             HStack {
                 Button("Not Now") {
                     model.dismissSetup(permanently: false)
