@@ -6,20 +6,39 @@ Intelligent, safety-first application uninstallation and low-storage toolkit for
 
 ## Distribute without Apple Developer ID (checklist)
 
+### GitHub Actions (recommended)
+
+1. Push this repo to GitHub (already: `SadeepaNHerath/Spacefold`).
+2. (Optional Sparkle) Run `./Scripts/generate-sparkle-keys.sh`, commit the **public** key, and add the private key contents as a repo secret named `SPARKLE_ED_PRIVATE_KEY` (Settings → Secrets and variables → Actions).
+3. GitHub → **Actions** → **Release** → **Run workflow**
+   - Set **version** to e.g. `1.0.0` (or leave empty to use `Info.plist`)
+   - Optionally create a **draft** release
+4. Wait for the macOS job to finish; the Release will include the zip, `.sha256`, and `appcast.xml` when Sparkle is configured.
+5. Users install with:
+
+```bash
+REPO=SadeepaNHerath/Spacefold \
+  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/Scripts/install.sh | bash
+```
+
+You can also push a tag `v1.0.0` to trigger the same workflow automatically.
+
+### Manual package (local Mac)
+
 1. **One-time Sparkle keys** (for auto-update):
    ```bash
    chmod +x Scripts/generate-sparkle-keys.sh
    ./Scripts/generate-sparkle-keys.sh
    ```
-   Commit `SafeUninstaller/Resources/sparkle-public-ed-key.txt`. Keep `sparkle-private/ed-private-key.txt` secret (gitignored).
+   Commit `SafeUninstaller/Resources/sparkle-public-ed-key.txt`. Keep `sparkle-private/ed-private-key.txt` secret (gitignored). For CI, store that private key as Actions secret `SPARKLE_ED_PRIVATE_KEY`.
 2. **Package**:
    ```bash
    chmod +x Scripts/package-release.sh Scripts/install.sh
-   RELEASE_REPO=OWNER/REPO ./Scripts/package-release.sh
+   RELEASE_REPO=SadeepaNHerath/Spacefold ./Scripts/package-release.sh
    ```
    Or without updates: `./Scripts/package-release.sh` (Sparkle stays disabled until feed keys are embedded).
-3. **GitHub Release** — upload `SafeUninstaller-x.y.z.zip`, `.sha256`, and `appcast.xml` (appcast must be reachable at `…/releases/latest/download/appcast.xml`).
-4. **Users install** via `Scripts/install.sh` or manual unzip → Right-click → Open once → grant Full Disk Access (+ Automation for Empty Trash).
+3. **GitHub Release** — upload `SafeUninstaller-x.y.z.zip`, `.sha256`, and `appcast.xml` (appcast must be reachable at `…/releases/latest/download/appcast.xml`), or use Actions above.
+4. **Users install** via the Terminal one-liner, or manual unzip → Right-click → Open once → grant Full Disk Access (+ Automation for Empty Trash).
 5. **Help → Copy Diagnostics** if something goes wrong (on-device log only; no telemetry).
 
 ## Install without App Store
@@ -43,18 +62,23 @@ Or unzip `dist/SafeUninstaller-1.0.0.zip` and move `SafeUninstaller.app` into **
 
 ### Option C — Terminal install from a published Release
 
-After the Release exists and this repo is on GitHub (replace `OWNER/REPO`):
+```bash
+REPO=SadeepaNHerath/Spacefold \
+  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/Scripts/install.sh | bash
+```
+
+Pin a tag:
 
 ```bash
-REPO=OWNER/REPO \
-  curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/main/Scripts/install.sh | bash
+REPO=SadeepaNHerath/Spacefold TAG=v1.0.0 \
+  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/Scripts/install.sh | bash
 ```
 
 Or install a specific asset URL:
 
 ```bash
-INSTALL_ZIP_URL=https://github.com/OWNER/REPO/releases/download/v1.0.0/SafeUninstaller-1.0.0.zip \
-  ./Scripts/install.sh
+INSTALL_ZIP_URL=https://github.com/SadeepaNHerath/Spacefold/releases/download/v1.0.0/SafeUninstaller-1.0.0.zip \
+  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/Scripts/install.sh | bash
 ```
 
 The installer places the app in `~/Applications`, clears the quarantine attribute, and opens it.
