@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without v prefix (e.g. 1.0.0). Leave empty to use Info.plist."
+        required: false
+        default: ""
+        type: string
+      draft:
+        description: "Create as draft release"
+        required: false
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          INPUT="${{ github.event.inputs.version }}"
+          if [[ -n "${INPUT:-}" ]]; then
+            VERSION="$INPUT"
+          elif [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' SafeUninstaller/Info.plist 2>/dev/null || echo "1.0.0")"
+          fi
+          # Normalize: strip leading v if present
+          VERSION="${VERSION#v}"
+          if [[ -z "$VERSION" ]]; then
+            echo "error: empty version" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version=$VERSION tag=v$VERSION"
+
+      - name: Prepare Sparkle private key (optional)
+        id: sparkle
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          PUBLIC_KEY_FILE="SafeUninstaller/Resources/sparkle-public-ed-key.txt"
+          if [[ -n "${SPARKLE_ED_PRIVATE_KEY:-}" && -f "$PUBLIC_KEY_FILE" && -s "$PUBLIC_KEY_FILE" ]]; then
+            mkdir -p sparkle-private
+            printf '%s\n' "$SPARKLE_ED_PRIVATE_KEY" > sparkle-private/ed-private-key.txt
+            chmod 600 sparkle-private/ed-private-key.txt
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Sparkle signing enabled"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            if [[ -n "${SPARKLE_ED_PRIVATE_KEY:-}" && ! -f "$PUBLIC_KEY_FILE" ]]; then
+              echo "warning: SPARKLE_ED_PRIVATE_KEY set but public key file missing; packaging without Sparkle"
+            else
+              echo "Sparkle disabled (no private key secret and/or no public key file)"
+            fi
+          fi
+
+      - name: Package release
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          RELEASE_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          chmod +x Scripts/package-release.sh Scripts/install.sh Scripts/generate-sparkle-keys.sh || true
+          if [[ "${{ steps.sparkle.outputs.enabled }}" == "true" ]]; then
+            VERSION="$VERSION" RELEASE_REPO="$RELEASE_REPO" ./Scripts/package-release.sh
+          else
+            VERSION="$VERSION" SKIP_SPARKLE=1 ./Scripts/package-release.sh
+          fi
+          ls -la dist/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: SafeUninstaller ${{ steps.ver.outputs.tag }}
+          draft: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.draft == 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          body: |
+            ## Install (Terminal)
+
+            ```bash
+            REPO=${{ github.repository }} curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/Scripts/install.sh | bash
+            ```
+
+            Or download the zip below, unzip, move to Applications / ~/Applications.
+
+            **First launch:** if macOS blocks the app, Right-click → Open → Open (ad-hoc / unsigned build).
+
+            Then grant **Full Disk Access** in System Settings. Empty Trash may ask for Finder Automation once.
+          files: |
+            dist/SafeUninstaller-${{ steps.ver.outputs.version }}.zip
+            dist/SafeUninstaller-${{ steps.ver.outputs.version }}.zip.sha256
+            dist/appcast.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
