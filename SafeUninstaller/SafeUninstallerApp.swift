@@ -39,7 +39,7 @@ struct SafeUninstallerApp: App {
                 Button("Review & Move to Trash…") { model.requestTrashForCurrentModule() }
                     .keyboardShortcut("t", modifiers: [.command, .shift])
                 Button("Empty Trash…") { model.requestEmptyTrash() }
-                    .keyboardShortcut("delete", modifiers: [.command, .shift])
+                    .keyboardShortcut(.delete, modifiers: [.command, .shift])
             }
             CommandGroup(after: .help) {
                 Button("Setup & Permissions…") {
@@ -69,7 +69,7 @@ struct SettingsView: View {
             Section("Permissions") {
                 LabeledContent("Full Disk Access") {
                     Text(model.hasFDA ? "Granted" : "Not granted")
-                        .foregroundStyle(model.hasFDA ? .secondary : .orange)
+                        .foregroundStyle(model.hasFDA ? Color.secondary : Color.orange)
                 }
                 Button("Open Full Disk Access Settings…") { model.openFullDiskAccessSettings() }
                 Button("Open Automation Settings…") { model.openAutomationPrivacySettings() }
@@ -83,6 +83,14 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section("Compression defaults") {
+                Picker("Video format", selection: Binding(
+                    get: { model.videoOutputFormat.rawValue },
+                    set: { if let v = VideoOutputFormat(rawValue: $0) { model.videoOutputFormat = v } }
+                )) {
+                    ForEach(VideoOutputFormat.allCases) { format in
+                        Text(format.displayName).tag(format.rawValue)
+                    }
+                }
                 Picker("Video quality", selection: $videoQualityRaw) {
                     ForEach(VideoQualityPreset.allCases) { preset in
                         Text(preset.displayName).tag(preset.rawValue)

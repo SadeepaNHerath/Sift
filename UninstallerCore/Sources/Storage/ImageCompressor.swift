@@ -103,11 +103,14 @@ public final class ImageCompressor: @unchecked Sendable {
 
         let heicTemp = tempDir.appendingPathComponent(UUID().uuidString + ".heic")
         let jpegTemp = tempDir.appendingPathComponent(UUID().uuidString + ".jpg")
+        let pngTemp = tempDir.appendingPathComponent(UUID().uuidString + ".png")
         try? fileManager.removeItem(at: heicTemp)
         try? fileManager.removeItem(at: jpegTemp)
+        try? fileManager.removeItem(at: pngTemp)
 
         var heicOK = false
         var jpegOK = false
+        var pngOK = false
 
         if format == .automatic || format == .heic {
             heicOK = writeDestination(
@@ -117,7 +120,7 @@ public final class ImageCompressor: @unchecked Sendable {
                 quality: heicQuality
             )
             if isCancelled(generation: generation) {
-                cleanupTemps(heicTemp, jpegTemp)
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
                 return cancelled(path: path, original: originalSize)
             }
         }
@@ -130,13 +133,27 @@ public final class ImageCompressor: @unchecked Sendable {
                 quality: jpegQuality
             )
             if isCancelled(generation: generation) {
-                cleanupTemps(heicTemp, jpegTemp)
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
+                return cancelled(path: path, original: originalSize)
+            }
+        }
+
+        if format == .png {
+            pngOK = writeDestination(
+                source: source,
+                to: pngTemp,
+                type: UTType.png.identifier as CFString,
+                quality: 1.0
+            )
+            if isCancelled(generation: generation) {
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
                 return cancelled(path: path, original: originalSize)
             }
         }
 
         let heicSize = heicOK ? fileSize(heicTemp) : Int64.max
         let jpegSize = jpegOK ? fileSize(jpegTemp) : Int64.max
+        let pngSize = pngOK ? fileSize(pngTemp) : Int64.max
 
         let chosenURL: URL
         let chosenSize: Int64
@@ -145,7 +162,7 @@ public final class ImageCompressor: @unchecked Sendable {
         switch format {
         case .heic:
             guard heicSize < originalSize && heicSize > 0 && heicSize != Int64.max else {
-                cleanupTemps(heicTemp, jpegTemp)
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
                 return failure(
                     path: path,
                     original: originalSize,
@@ -156,10 +173,10 @@ public final class ImageCompressor: @unchecked Sendable {
             chosenURL = heicTemp
             chosenSize = heicSize
             outExt = "heic"
-            try? fileManager.removeItem(at: jpegTemp)
+            cleanupTemps(jpegTemp, pngTemp)
         case .jpeg:
             guard jpegSize < originalSize && jpegSize > 0 && jpegSize != Int64.max else {
-                cleanupTemps(heicTemp, jpegTemp)
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
                 return failure(
                     path: path,
                     original: originalSize,
@@ -170,20 +187,34 @@ public final class ImageCompressor: @unchecked Sendable {
             chosenURL = jpegTemp
             chosenSize = jpegSize
             outExt = "jpg"
-            try? fileManager.removeItem(at: heicTemp)
+            cleanupTemps(heicTemp, pngTemp)
+        case .png:
+            guard pngSize < originalSize && pngSize > 0 && pngSize != Int64.max else {
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
+                return failure(
+                    path: path,
+                    original: originalSize,
+                    message: "Converted PNG was not smaller — original kept",
+                    compressed: pngSize == Int64.max ? 0 : pngSize
+                )
+            }
+            chosenURL = pngTemp
+            chosenSize = pngSize
+            outExt = "png"
+            cleanupTemps(heicTemp, jpegTemp)
         case .automatic:
             if heicSize < jpegSize && heicSize < originalSize && heicSize > 0 {
                 chosenURL = heicTemp
                 chosenSize = heicSize
                 outExt = "heic"
-                try? fileManager.removeItem(at: jpegTemp)
+                cleanupTemps(jpegTemp, pngTemp)
             } else if jpegSize < originalSize && jpegSize > 0 {
                 chosenURL = jpegTemp
                 chosenSize = jpegSize
                 outExt = "jpg"
-                try? fileManager.removeItem(at: heicTemp)
+                cleanupTemps(heicTemp, pngTemp)
             } else {
-                cleanupTemps(heicTemp, jpegTemp)
+                cleanupTemps(heicTemp, jpegTemp, pngTemp)
                 return failure(
                     path: path,
                     original: originalSize,

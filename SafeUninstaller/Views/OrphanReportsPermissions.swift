@@ -32,8 +32,11 @@ struct OrphanListView: View {
                             Text(id).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Text(orphan.confidence.displayName)
-                            .font(.caption2)
+                            .font(.caption2.weight(.semibold))
                             .foregroundStyle(color(for: orphan.confidence))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(color(for: orphan.confidence).opacity(0.12), in: Capsule())
                     }
                 }
                 .tag(orphan.id)
@@ -60,7 +63,7 @@ struct OrphanListView: View {
         switch level {
         case .high: return .green
         case .medium: return .orange
-        case .low: return .red
+        case .low: return .secondary
         }
     }
 }

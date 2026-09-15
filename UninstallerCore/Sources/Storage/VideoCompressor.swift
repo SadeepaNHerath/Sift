@@ -147,6 +147,7 @@ public final class VideoCompressor: @unchecked Sendable {
     public func compress(
         path: String,
         quality: VideoQualityPreset = .balanced,
+        format: VideoOutputFormat = .mp4HEVC,
         progress: ((Double) -> Void)? = nil
     ) async -> VideoCompressionResult {
         let url = URL(fileURLWithPath: path)
@@ -175,7 +176,7 @@ public final class VideoCompressor: @unchecked Sendable {
         }
 
         let asset = AVURLAsset(url: url)
-        let preset = await preferredPreset(for: asset, quality: quality)
+        let preset = await preferredPreset(for: asset, quality: quality, format: format)
         guard let session = AVAssetExportSession(asset: asset, presetName: preset) else {
             return VideoCompressionResult(
                 originalPath: path,
@@ -198,7 +199,7 @@ public final class VideoCompressor: @unchecked Sendable {
 
         let tempDir = fileManager.temporaryDirectory.appendingPathComponent("SafeUninstallerVideo", isDirectory: true)
         try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        let outExt = preset.contains("HEVC") || path.lowercased().hasSuffix(".mp4") ? "mp4" : "mov"
+        let outExt = format.fileExtension
         let tempOut = tempDir.appendingPathComponent(UUID().uuidString + "." + outExt)
         try? fileManager.removeItem(at: tempOut)
 
@@ -266,11 +267,10 @@ public final class VideoCompressor: @unchecked Sendable {
         let stem = url.deletingPathExtension().lastPathComponent
         var finalURL = parent.appendingPathComponent("\(stem).\(outExt)")
         if finalURL.path == path || fileManager.fileExists(atPath: finalURL.path) {
-            finalURL = parent.appendingPathComponent("\(stem)_compressed.\(outExt)")
+            finalURL = parent.appendingPathComponent("\(stem)_converted.\(outExt)")
         }
 
         do {
-            // Place compressed file first so the original stays intact until replace succeeds.
             try fileManager.moveItem(at: tempOut, to: finalURL)
             var resulting: NSURL?
             do {
@@ -306,36 +306,56 @@ public final class VideoCompressor: @unchecked Sendable {
         }
     }
 
-    private func preferredPreset(for asset: AVAsset, quality: VideoQualityPreset) async -> String {
+    private func preferredPreset(
+        for asset: AVAsset,
+        quality: VideoQualityPreset,
+        format: VideoOutputFormat = .mp4HEVC
+    ) async -> String {
         let compatible = AVAssetExportSession.exportPresets(compatibleWith: asset)
 
-        let candidates: [String]
+        let hevcCandidates: [String]
+        let h264Candidates: [String]
         switch quality {
         case .smaller:
-            candidates = [
+            hevcCandidates = [
                 AVAssetExportPresetHEVC1920x1080,
+                AVAssetExportPresetHEVCHighestQuality
+            ]
+            h264Candidates = [
                 AVAssetExportPresetMediumQuality,
                 AVAssetExportPreset1280x720,
                 AVAssetExportPresetLowQuality
             ]
         case .balanced:
-            candidates = [
+            hevcCandidates = [
                 AVAssetExportPresetHEVCHighestQuality,
+                AVAssetExportPresetHEVC1920x1080
+            ]
+            h264Candidates = [
                 AVAssetExportPreset1920x1080,
-                AVAssetExportPresetHEVC1920x1080,
                 AVAssetExportPresetMediumQuality
             ]
         case .higherQuality:
-            candidates = [
+            hevcCandidates = [
                 AVAssetExportPresetHEVCHighestQuality,
-                AVAssetExportPresetHEVC3840x2160,
+                AVAssetExportPresetHEVC3840x2160
+            ]
+            h264Candidates = [
                 AVAssetExportPreset3840x2160,
                 AVAssetExportPresetHighestQuality,
                 AVAssetExportPreset1920x1080
             ]
         }
 
-        for name in candidates where compatible.contains(name) {
+        let ordered: [String]
+        switch format {
+        case .mp4HEVC:
+            ordered = hevcCandidates + h264Candidates
+        case .mp4H264, .mov:
+            ordered = h264Candidates + hevcCandidates
+        }
+
+        for name in ordered where compatible.contains(name) {
             return name
         }
         if compatible.contains(AVAssetExportPresetMediumQuality) {

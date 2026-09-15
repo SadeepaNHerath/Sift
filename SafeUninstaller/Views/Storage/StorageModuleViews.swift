@@ -1,84 +1,80 @@
 import SwiftUI
+import AppKit
 import UninstallerCore
 
 struct LargeFilesPane: View {
     @EnvironmentObject private var model: AppViewModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Files over 100 MB in Downloads, Movies, Desktop, Documents, and Pictures (Spotlight + FileManager). With Full Disk Access, Music and the rest of your home folder are included too.")
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Files over \(thresholdLabel) in Downloads, Movies, Desktop, Documents, and Pictures. With Full Disk Access, Music and the rest of home are included.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Spacer()
-                Button("Select All") { model.selectAllLargeFiles(true) }
-                    .disabled(model.largeFileItems.isEmpty)
-                Button("Scan") { model.scanLargeFiles() }
-                    .disabled(model.isScanningLargeFiles)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        convertControls
+                        Spacer(minLength: 8)
+                        actionButtons
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        convertControls
+                        HStack {
+                            Spacer(minLength: 0)
+                            actionButtons
+                        }
+                    }
+                }
+
+                if let path = model.compressingPath {
+                    HStack(spacing: 8) {
+                        ProgressView(value: model.compressionProgress > 0 ? model.compressionProgress : nil)
+                        Text("Converting \((path as NSString).lastPathComponent)…")
+                            .font(.caption)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        if let estimate = model.compressionEstimateText {
+                            Text(estimate)
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Button("Cancel") { model.cancelCompression() }
+                            .controlSize(.small)
+                    }
+                } else if let savings = model.lastCompressionSavings {
+                    Text(savings)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(8)
+            .padding(10)
+
+            Divider()
 
             if model.isScanningLargeFiles {
                 ProgressView("Scanning…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if !model.hasScannedLargeFiles {
-                ContentUnavailableView("Not scanned yet", systemImage: "film.stack", description: Text("Find large files and compressible videos or photos."))
+                ContentUnavailableView(
+                    "Not scanned yet",
+                    systemImage: "film.stack",
+                    description: Text("Find large files and convert videos or photos to free space.")
+                )
             } else if model.largeFileItems.isEmpty {
-                ContentUnavailableView("No large files", systemImage: "checkmark.seal", description: Text("Nothing over 100 MB in the usual folders."))
+                ContentUnavailableView(
+                    "No large files",
+                    systemImage: "checkmark.seal",
+                    description: Text("Nothing over \(thresholdLabel) in the usual folders.")
+                )
             } else {
                 List {
                     ForEach(model.largeFileItems) { item in
-                        HStack(alignment: .top) {
-                            Toggle(isOn: Binding(
-                                get: { item.isSelected },
-                                set: { model.toggleLargeFile(item, selected: $0) }
-                            )) { EmptyView() }
-                            .labelsHidden()
-                            .accessibilityLabel(item.displayName)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.displayName).font(.body.weight(.medium))
-                                Text(item.path).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
-                                HStack(spacing: 6) {
-                                    Text(item.formattedSize)
-                                    if item.isVideo {
-                                        mediaBadge("Video", color: .purple)
-                                    }
-                                    if item.isImage {
-                                        mediaBadge("Image", color: .teal)
-                                    }
-                                }
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if item.isVideo || item.isImage {
-                                if model.compressingPath == item.path {
-                                    HStack(spacing: 8) {
-                                        ProgressView(value: item.isVideo ? model.compressionProgress : nil)
-                                            .frame(width: 80)
-                                        Button("Cancel") { model.cancelCompression() }
-                                            .controlSize(.small)
-                                    }
-                                } else {
-                                    Button("Compress") {
-                                        if item.isVideo {
-                                            model.compressVideo(item)
-                                        } else {
-                                            model.compressImage(item)
-                                        }
-                                    }
-                                    .disabled(model.compressingPath != nil)
-                                    .help(item.isVideo
-                                          ? "AVFoundation HEVC/H.264; original goes to Trash"
-                                          : "ImageIO HEIC/JPEG; original goes to Trash")
-                                }
-                            }
-                        }
-                        .contextMenu {
-                            Button("Reveal in Finder") { model.revealInFinder(item.path) }
-                        }
+                        largeFileRow(item)
                     }
                 }
+                .listStyle(.inset)
             }
         }
         .navigationTitle("Large Files")
@@ -90,13 +86,129 @@ struct LargeFilesPane: View {
         }
     }
 
+    private var thresholdLabel: String {
+        let mb = UserDefaults.standard.object(forKey: "SafeUninstaller.largeFileThresholdMB") as? Int ?? 100
+        return "\(mb) MB"
+    }
+
+    @ViewBuilder
+    private var convertControls: some View {
+        HStack(spacing: 8) {
+            Picker("Video", selection: $model.videoOutputFormat) {
+                ForEach(VideoOutputFormat.allCases) { format in
+                    Text(format.displayName).tag(format)
+                }
+            }
+            .labelsHidden()
+            .frame(minWidth: 110)
+            .help(model.videoOutputFormat.detail)
+
+            Picker("Quality", selection: $model.videoQualityPreset) {
+                ForEach(VideoQualityPreset.allCases) { preset in
+                    Text(preset.displayName).tag(preset)
+                }
+            }
+            .labelsHidden()
+            .frame(minWidth: 100)
+            .help(model.videoQualityPreset.detail)
+
+            Picker("Image", selection: $model.imageOutputFormat) {
+                ForEach(ImageOutputFormat.allCases) { format in
+                    Text(format.displayName).tag(format)
+                }
+            }
+            .labelsHidden()
+            .frame(minWidth: 100)
+            .help(model.imageOutputFormat.detail)
+        }
+        .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            Button("Select All") { model.selectAllLargeFiles(true) }
+                .disabled(model.largeFileItems.isEmpty)
+            Button("Scan") { model.scanLargeFiles() }
+                .disabled(model.isScanningLargeFiles)
+        }
+        .controlSize(.small)
+    }
+
+    private func largeFileRow(_ item: LargeFileItem) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Toggle(isOn: Binding(
+                get: { item.isSelected },
+                set: { model.toggleLargeFile(item, selected: $0) }
+            )) { EmptyView() }
+            .labelsHidden()
+            .accessibilityLabel(item.displayName)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.displayName)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundStyle(.primary)
+                Text(item.path)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(item.path)
+                HStack(spacing: 6) {
+                    Text(item.formattedSize)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .monospacedDigit()
+                    if item.isVideo {
+                        mediaBadge("Video", color: .purple)
+                    }
+                    if item.isImage {
+                        mediaBadge("Image", color: .teal)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if item.isVideo || item.isImage {
+                if model.compressingPath == item.path {
+                    ProgressView(value: item.isVideo ? model.compressionProgress : nil)
+                        .frame(width: 72)
+                } else {
+                    Button("Convert") {
+                        if item.isVideo {
+                            model.compressVideo(item)
+                        } else {
+                            model.compressImage(item)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(model.compressingPath != nil)
+                    .help(item.isVideo
+                          ? "Convert using \(model.videoOutputFormat.displayName); original goes to Trash"
+                          : "Convert using \(model.imageOutputFormat.displayName); original goes to Trash")
+                }
+            }
+        }
+        .padding(.vertical, 2)
+        .contextMenu {
+            Button("Reveal in Finder") { model.revealInFinder(item.path) }
+            Button("Copy Path") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(item.path, forType: .string)
+            }
+        }
+    }
+
     private func mediaBadge(_ title: String, color: Color) -> some View {
         Text(title)
-            .font(.caption2)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(color.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(color)
+            .background(color.opacity(0.15), in: Capsule())
     }
 }
 
@@ -104,82 +216,54 @@ struct LargeFilesDetailView: View {
     @EnvironmentObject private var model: AppViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Large Files & Media").font(.title2.bold())
-            Text("Select files to move to Trash, or compress videos (AVFoundation) and photos (ImageIO). Originals go to Trash when compression succeeds.")
-                .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Convert & clean").font(.title2.bold())
+                Text("Pick video/image formats in the list, then Convert on each media row. Successful converts move the original to Trash.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            GroupBox("Video quality") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker("Preset", selection: $model.videoQualityPreset) {
-                        ForEach(VideoQualityPreset.allCases) { preset in
-                            Text(preset.displayName).tag(preset)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    Text(model.videoQualityPreset.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            GroupBox("Image format") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker("Format", selection: $model.imageOutputFormat) {
-                        ForEach(ImageOutputFormat.allCases) { format in
-                            Text(format.displayName).tag(format)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    Text(model.imageOutputFormat.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let path = model.compressingPath {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Compressing \((path as NSString).lastPathComponent)…")
-                    ProgressView(value: model.compressionProgress > 0 ? model.compressionProgress : nil)
-                    if let estimate = model.compressionEstimateText {
-                        Text(estimate)
-                            .font(.caption.monospacedDigit())
+                GroupBox("Current formats") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        LabeledContent("Video", value: "\(model.videoOutputFormat.displayName) · \(model.videoQualityPreset.displayName)")
+                        Text(model.videoOutputFormat.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        LabeledContent("Image", value: model.imageOutputFormat.displayName)
+                        Text(model.imageOutputFormat.detail)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Button("Cancel") { model.cancelCompression() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-            }
 
-            if let savings = model.lastCompressionSavings {
-                Text(savings)
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-
-            GroupBox("Selection") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("\(model.selectedLargeFiles.count) selected · \(ByteCountFormatter.string(fromByteCount: model.selectedLargeFiles.reduce(0) { $0 + $1.byteSize }, countStyle: .file))")
-                    Text("\(model.largeFileItems.filter(\.isVideo).count) videos · \(model.largeFileItems.filter(\.isImage).count) images can be compressed.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button("Move Selected to Trash…", role: .destructive) {
-                        model.requestLargeFileRemoval()
+                GroupBox("Selection") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("\(model.selectedLargeFiles.count) selected · \(ByteCountFormatter.string(fromByteCount: model.selectedLargeFiles.reduce(0) { $0 + $1.byteSize }, countStyle: .file))")
+                            .font(.body.monospacedDigit())
+                        Text("\(model.largeFileItems.filter(\.isVideo).count) videos · \(model.largeFileItems.filter(\.isImage).count) images can be converted.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Move Selected to Trash…", role: .destructive) {
+                            model.requestLargeFileRemoval()
+                        }
+                        .disabled(model.selectedLargeFiles.isEmpty || model.isRemoving)
                     }
-                    .disabled(model.selectedLargeFiles.isEmpty || model.isRemoving)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
 
-            Spacer()
+                if let savings = model.lastCompressionSavings {
+                    GroupBox("Last conversion") {
+                        Text(savings)
+                            .font(.callout.monospacedDigit())
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding()
     }
 }
-
 struct CachesPane: View {
     @EnvironmentObject private var model: AppViewModel
 

@@ -16,6 +16,7 @@
 		2C1B43F86D0EC612F4AE3E58 /* AuditReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 813B70012F31CE48B5A51895 /* AuditReport.swift */; };
 		31F6D66AE85830E04AD6FAA2 /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14B83BEB7FBAE5EC6BCDCDD /* AppIdentity.swift */; };
 		385856BBC59197E82688B243 /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A11198EF1A6DEBE0D2432E /* OverviewView.swift */; };
+		3AA1EB683AB5088ECECE7034 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D02487724C2B4A23E0BCE8A /* Assets.xcassets */; };
 		3F7088BA39FD4F005DAFF919 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561B71CF26198FC0C14EF7D6 /* AppViewModel.swift */; };
 		448AEB47437AE5728D897060 /* PathAllowlist.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7DE85820F944C570D53F2D /* PathAllowlist.swift */; };
 		4611DEF962AB0F7E54D6AEDE /* SecurityAllowlistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2603F2045A441430693388C2 /* SecurityAllowlistTests.swift */; };
@@ -128,6 +129,7 @@
 		56509E8C9C8E9B3C9A357102 /* TimedProcess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedProcess.swift; sourceTree = "<group>"; };
 		56AF6C4FD69D952365D97FA6 /* ResourceAttributionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceAttributionEngine.swift; sourceTree = "<group>"; };
 		57B07428EE7FB11AF203161E /* HelperXPCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperXPCClient.swift; sourceTree = "<group>"; };
+		5D02487724C2B4A23E0BCE8A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		625BE0AA9FBE047505D36252 /* StorageToolkitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageToolkitTests.swift; sourceTree = "<group>"; };
 		6E3911CEB5150BDB074297EF /* UninstallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallService.swift; sourceTree = "<group>"; };
 		70D9F3C8AF86A0D91E7DCF8D /* StorageOverviewEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageOverviewEngine.swift; sourceTree = "<group>"; };
@@ -350,6 +352,7 @@
 				E693D80E164311A55A89EC4C /* Updates */,
 				019375A8E6BB01D763B4AB80 /* ViewModels */,
 				24EB5FB81C04B07B8C753828 /* Views */,
+				5D02487724C2B4A23E0BCE8A /* Assets.xcassets */,
 				B2D35518F9727AFF4A281644 /* Info.plist */,
 				B3157B2164DF854AA07E6E4D /* SafeUninstallerApp.swift */,
 			);
@@ -563,6 +566,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3AA1EB683AB5088ECECE7034 /* Assets.xcassets in Resources */,
 				B0FE4806DFDACF8E0E82421E /* com.safeuninstaller.UninstallerHelper.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
