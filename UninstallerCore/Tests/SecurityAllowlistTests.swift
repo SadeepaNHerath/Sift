@@ -116,4 +116,39 @@ final class SecurityAllowlistTests: XCTestCase {
         let unrelatedAttr = ResourceAttributionEngine().attribute(candidate: unrelatedResource, to: app)
         XCTAssertNil(unrelatedAttr)
     }
+
+    func testDeniesSensitiveHomePaths() {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home))
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home + "/Library/Keychains/login.keychain-db"))
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home + "/Library/Mail/V10"))
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home + "/Library/Messages"))
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home + "/Library/Safari/Bookmarks.plist"))
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home + "/.ssh/id_ed25519"))
+        XCTAssertNotNil(SafetyDenylist.shared.denyReason(for: home + "/.gnupg/private-keys-v1.d"))
+        XCTAssertNotNil(SafetyDenylist.shared.preTrashDenialReason(for: home + "/Library/Accounts"))
+    }
+
+    func testApplicationSupportSingleLeafOnly() {
+        XCTAssertNil(PathAllowlist.privilegedTrashDenialReason(for: "/Library/Application Support/Acme"))
+        XCTAssertNotNil(PathAllowlist.privilegedTrashDenialReason(for: "/Library/Application Support/Acme/deep/file"))
+    }
+
+    func testShortNeedleBoundaryMatching() {
+        XCTAssertTrue(ResourceDiscoveryEngine.pathMatchesNeedle(
+            nameLower: "box",
+            pathLower: "/users/x/library/application support/box",
+            needle: "box"
+        ))
+        XCTAssertFalse(ResourceDiscoveryEngine.pathMatchesNeedle(
+            nameLower: "sandbox",
+            pathLower: "/users/x/library/application support/sandbox",
+            needle: "box"
+        ))
+        XCTAssertTrue(ResourceDiscoveryEngine.pathMatchesNeedle(
+            nameLower: "longapplicationname",
+            pathLower: "/tmp/longapplicationname",
+            needle: "longapplicationname"
+        ))
+    }
 }

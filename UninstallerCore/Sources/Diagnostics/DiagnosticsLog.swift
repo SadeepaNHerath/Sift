@@ -15,7 +15,11 @@ public final class DiagnosticsLog: @unchecked Sendable {
         let logs = fileManager.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/SafeUninstaller", isDirectory: true)
         try? fileManager.createDirectory(at: logs, withIntermediateDirectories: true)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: logs.path)
         self.logURL = logs.appendingPathComponent("app.log")
+        if fileManager.fileExists(atPath: logURL.path) {
+            try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: logURL.path)
+        }
     }
 
     public var directoryURL: URL { logURL.deletingLastPathComponent() }
@@ -37,6 +41,7 @@ public final class DiagnosticsLog: @unchecked Sendable {
                     }
                 } else {
                     try? data.write(to: self.logURL, options: .atomic)
+                    try? self.fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: self.logURL.path)
                 }
             }
         }

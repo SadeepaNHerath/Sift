@@ -197,25 +197,17 @@ public final class CLICleanupRunner: @unchecked Sendable {
     }
 
     public static func which(_ name: String) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = [name]
         var env = ProcessInfo.processInfo.environment
         let inherited = env["PATH"] ?? "/usr/bin:/bin"
         env["PATH"] = augmentedPathDirectories.joined(separator: ":") + ":" + inherited
-        process.environment = env
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return nil
-        }
-        guard process.terminationStatus == 0 else { return nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let path = String(data: data, encoding: .utf8)?
+        let result = TimedProcess.run(
+            executable: "/usr/bin/which",
+            arguments: [name],
+            timeout: 5,
+            environment: env
+        )
+        guard !result.timedOut, result.status == 0 else { return nil }
+        let path = String(data: result.stdout, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let path, !path.isEmpty, FileManager.default.isExecutableFile(atPath: path) else {
             return nil

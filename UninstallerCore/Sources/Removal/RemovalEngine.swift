@@ -55,20 +55,6 @@ public final class RemovalEngine: @unchecked Sendable {
         }
 
         for item in resources {
-            guard item.isSelected else {
-                results.append(
-                    RemovalItemResult(
-                        path: item.resource.path,
-                        category: item.resource.category,
-                        confidence: item.confidence,
-                        signals: item.signals,
-                        outcome: .retained,
-                        byteSize: item.resource.byteSize
-                    )
-                )
-                continue
-            }
-
             if item.isDenied {
                 results.append(
                     RemovalItemResult(
@@ -78,6 +64,20 @@ public final class RemovalEngine: @unchecked Sendable {
                         signals: item.signals,
                         outcome: .skippedDenied,
                         errorMessage: item.denyReason,
+                        byteSize: item.resource.byteSize
+                    )
+                )
+                continue
+            }
+
+            guard item.isSelected else {
+                results.append(
+                    RemovalItemResult(
+                        path: item.resource.path,
+                        category: item.resource.category,
+                        confidence: item.confidence,
+                        signals: item.signals,
+                        outcome: .retained,
                         byteSize: item.resource.byteSize
                     )
                 )
@@ -165,6 +165,17 @@ public final class RemovalEngine: @unchecked Sendable {
             }
             if let client = privilegedClient, client.isAvailable {
                 do {
+                    if let reason = denylist.preTrashDenialReason(for: path) {
+                        return RemovalItemResult(
+                            path: path,
+                            category: item.resource.category,
+                            confidence: item.confidence,
+                            signals: item.signals,
+                            outcome: .skippedDenied,
+                            errorMessage: reason,
+                            byteSize: item.resource.byteSize
+                        )
+                    }
                     let map = try await client.trashItems(at: [path])
                     if let err = map[path], !err.isEmpty {
                         return RemovalItemResult(
@@ -212,6 +223,17 @@ public final class RemovalEngine: @unchecked Sendable {
         }
 
         do {
+            if let reason = denylist.preTrashDenialReason(for: path) {
+                return RemovalItemResult(
+                    path: path,
+                    category: item.resource.category,
+                    confidence: item.confidence,
+                    signals: item.signals,
+                    outcome: .skippedDenied,
+                    errorMessage: reason,
+                    byteSize: item.resource.byteSize
+                )
+            }
             var resulting: NSURL?
             try fileManager.trashItem(at: url, resultingItemURL: &resulting)
             let gone = !fileManager.fileExists(atPath: path)
@@ -248,13 +270,11 @@ public final class RemovalEngine: @unchecked Sendable {
             }
         } else {
             domain = "gui/\(getuid())"
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-            process.arguments = ["bootout", domain, item.resource.path]
-            process.standardOutput = Pipe()
-            process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
+            _ = TimedProcess.run(
+                executable: "/bin/launchctl",
+                arguments: ["bootout", domain, item.resource.path],
+                timeout: 8
+            )
         }
     }
 
@@ -278,6 +298,8 @@ public final class RemovalEngine: @unchecked Sendable {
         let data = try encoder.encode(report)
         try data.write(to: jsonURL, options: .atomic)
         try report.humanReadableSummary.write(to: txtURL, atomically: true, encoding: .utf8)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: jsonURL.path)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: txtURL.path)
     }
 
     public func loadReports() -> [AuditReport] {
@@ -298,13 +320,57 @@ public final class RemovalEngine: @unchecked Sendable {
     }
 
     /// Trash arbitrary user-selected paths (caches, large files, dev deps) with denylist checks.
+    /// Only home-directory (or system temp) paths are accepted — defense if UI is bypassed.
     public func trashPaths(
         _ paths: [(path: String, category: ResourceCategory, byteSize: Int64)],
         reportName: String,
         dryRun: Bool = false
     ) async -> AuditReport {
+        let home = (fileManager.homeDirectoryForCurrentUser.path as NSString).standardizingPath
+        let tmp = (NSTemporaryDirectory() as NSString).standardizingPath
         var attributed: [AttributedResource] = []
         for entry in paths {
+            let standardized = (entry.path as NSString).standardizingPath
+            let underHome = standardized == home || standardized.hasPrefix(home + "/")
+            let underTmp = standardized == tmp || standardized.hasPrefix(tmp + "/")
+            guard underHome || underTmp else {
+                attributed.append(
+                    AttributedResource(
+                        resource: DiscoveredResource(
+                            path: entry.path,
+                            category: entry.category,
+                            isDirectory: true,
+                            byteSize: entry.byteSize
+                        ),
+                        signals: [],
+                        confidence: .low,
+                        score: 0,
+                        isDenied: true,
+                        denyReason: "Path outside home/temp — refused",
+                        isSelected: false
+                    )
+                )
+                continue
+            }
+            if let reason = denylist.preTrashDenialReason(for: entry.path) {
+                attributed.append(
+                    AttributedResource(
+                        resource: DiscoveredResource(
+                            path: entry.path,
+                            category: entry.category,
+                            isDirectory: true,
+                            byteSize: entry.byteSize
+                        ),
+                        signals: [],
+                        confidence: .low,
+                        score: 0,
+                        isDenied: true,
+                        denyReason: reason,
+                        isSelected: false
+                    )
+                )
+                continue
+            }
             let resource = DiscoveredResource(
                 path: entry.path,
                 category: entry.category,

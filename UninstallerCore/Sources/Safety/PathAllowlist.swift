@@ -81,12 +81,8 @@ public enum PathAllowlist: Sendable {
                 if first.lowercased().hasPrefix("com.apple.") {
                     return "Apple system component"
                 }
-                // Re-compose allowed path: root + first component only for shallow roots;
-                // for Application Support allow nested paths under that first leaf.
-                if root.hasSuffix("Application Support") {
-                    return nil
-                }
-                // LaunchAgents/Daemons/Preferences/Caches/PrivilegedHelperTools: single leaf only
+                // Single first-component leaf only under every privileged root
+                // (including Application Support — no deep nesting).
                 if components.count == 1 {
                     return nil
                 }

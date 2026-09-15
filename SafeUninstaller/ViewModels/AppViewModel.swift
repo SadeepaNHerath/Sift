@@ -82,6 +82,8 @@ final class AppViewModel: ObservableObject {
 
     @Published var statusMessage: String = ""
     @Published var toastMessage: String?
+    @Published var trashBannerMessage: String?
+    @Published var showUpdatesUnavailableAlert = false
     @Published var hasFDA = false
     @Published var helperStatus: String = "Unknown"
     @Published var canRegisterHelper = false
@@ -277,8 +279,10 @@ final class AppViewModel: ObservableObject {
     func scanLargeFiles() {
         isScanningLargeFiles = true
         statusMessage = "Scanning large files…"
+        let thresholdMB = UserDefaults.standard.object(forKey: "SafeUninstaller.largeFileThresholdMB") as? Int ?? 100
+        let minimumBytes = Int64(max(1, thresholdMB)) * 1_000_000
         Task.detached(priority: .userInitiated) {
-            let found = UninstallService.shared.scanLargeFiles()
+            let found = UninstallService.shared.scanLargeFiles(minimumBytes: minimumBytes)
             await MainActor.run {
                 self.largeFileItems = found
                 self.hasScannedLargeFiles = true
@@ -299,22 +303,32 @@ final class AppViewModel: ObservableObject {
         showConfirmSheet = true
     }
 
-    func removeSelectedLargeFiles() {
+    func removeSelectedLargeFiles(dryRun: Bool = false) {
         let selected = selectedLargeFiles
         guard !selected.isEmpty else { return }
         isRemoving = true
         let paths = selected.map { (path: $0.path, category: ResourceCategory.largeFile, byteSize: $0.byteSize) }
         Task {
-            let report = await service.removal.trashPaths(paths, reportName: "Large Files")
+            let report = await service.removal.trashPaths(paths, reportName: "Large Files", dryRun: dryRun)
             await MainActor.run {
                 self.lastReport = report
                 self.selectedReportID = report.id
                 self.isRemoving = false
                 self.refreshReports()
-                self.showToast("Moved \(report.removedCount) large file(s) to Trash")
-                self.scanLargeFiles()
-                self.refreshStorageOverview()
+                if dryRun {
+                    self.showToast("Dry run — \(report.removedCount) large file(s) would move to Trash")
+                } else {
+                    self.showTrashBanner("Moved \(report.removedCount) large file(s) to Trash")
+                    self.scanLargeFiles()
+                    self.refreshStorageOverview()
+                }
             }
+        }
+    }
+
+    func selectAllLargeFiles(_ selected: Bool) {
+        for i in largeFileItems.indices {
+            largeFileItems[i].isSelected = selected
         }
     }
 
@@ -508,21 +522,25 @@ final class AppViewModel: ObservableObject {
         showConfirmSheet = true
     }
 
-    func removeSelectedCaches() {
+    func removeSelectedCaches(dryRun: Bool = false) {
         let selected = selectedCaches
         guard !selected.isEmpty else { return }
         isRemoving = true
         let paths = selected.map { (path: $0.path, category: ResourceCategory.userCache, byteSize: $0.byteSize) }
         Task {
-            let report = await service.removal.trashPaths(paths, reportName: "Caches")
+            let report = await service.removal.trashPaths(paths, reportName: "Caches", dryRun: dryRun)
             await MainActor.run {
                 self.lastReport = report
                 self.selectedReportID = report.id
                 self.isRemoving = false
                 self.refreshReports()
-                self.showToast("Moved \(report.removedCount) cache folder(s) to Trash")
-                self.scanCaches()
-                self.refreshStorageOverview()
+                if dryRun {
+                    self.showToast("Dry run — \(report.removedCount) cache folder(s) would move to Trash")
+                } else {
+                    self.showTrashBanner("Moved \(report.removedCount) cache folder(s) to Trash")
+                    self.scanCaches()
+                    self.refreshStorageOverview()
+                }
             }
         }
     }
@@ -555,22 +573,32 @@ final class AppViewModel: ObservableObject {
         showConfirmSheet = true
     }
 
-    func removeSelectedDevItems() {
+    func removeSelectedDevItems(dryRun: Bool = false) {
         let selected = selectedDevItems
         guard !selected.isEmpty else { return }
         isRemoving = true
         let paths = selected.map { (path: $0.path, category: ResourceCategory.devDependency, byteSize: $0.byteSize) }
         Task {
-            let report = await service.removal.trashPaths(paths, reportName: "Developer Dependencies")
+            let report = await service.removal.trashPaths(paths, reportName: "Developer Dependencies", dryRun: dryRun)
             await MainActor.run {
                 self.lastReport = report
                 self.selectedReportID = report.id
                 self.isRemoving = false
                 self.refreshReports()
-                self.showToast("Moved \(report.removedCount) developer item(s) to Trash")
-                self.scanDevDependencies()
-                self.refreshStorageOverview()
+                if dryRun {
+                    self.showToast("Dry run — \(report.removedCount) developer item(s) would move to Trash")
+                } else {
+                    self.showTrashBanner("Moved \(report.removedCount) developer item(s) to Trash")
+                    self.scanDevDependencies()
+                    self.refreshStorageOverview()
+                }
             }
+        }
+    }
+
+    func selectAllDevItems(_ selected: Bool) {
+        for i in devItems.indices {
+            devItems[i].isSelected = selected
         }
     }
 
@@ -704,13 +732,13 @@ final class AppViewModel: ObservableObject {
         case .uninstall:
             performUninstall(dryRun: dryRun)
         case .orphans:
-            removeSelectedOrphans()
+            removeSelectedOrphans(dryRun: dryRun)
         case .largeFiles:
-            removeSelectedLargeFiles()
+            removeSelectedLargeFiles(dryRun: dryRun)
         case .caches:
-            removeSelectedCaches()
+            removeSelectedCaches(dryRun: dryRun)
         case .developer:
-            removeSelectedDevItems()
+            removeSelectedDevItems(dryRun: dryRun)
         }
     }
 
@@ -734,7 +762,7 @@ final class AppViewModel: ObservableObject {
                     self.showToast("Dry run complete — nothing moved")
                     self.statusMessage = "Dry run: \(report.removedCount) would be removed"
                 } else {
-                    self.showToast("Moved \(report.removedCount) item(s) to Trash")
+                    self.showTrashBanner("Moved \(report.removedCount) item(s) to Trash")
                     self.statusMessage = "Removed \(report.removedCount) item(s)"
                     self.refreshApps()
                     self.refreshStorageOverview()
@@ -770,21 +798,31 @@ final class AppViewModel: ObservableObject {
         orphans[idx].isSelected = selected
     }
 
-    func removeSelectedOrphans() {
+    func removeSelectedOrphans(dryRun: Bool = false) {
         let selected = selectedOrphans
         guard !selected.isEmpty else { return }
         isRemoving = true
         Task {
-            let report = await service.removal.removeOrphans(selected, dryRun: false)
+            let report = await service.removal.removeOrphans(selected, dryRun: dryRun)
             await MainActor.run {
                 self.lastReport = report
                 self.selectedReportID = report.id
                 self.isRemoving = false
                 self.refreshReports()
-                self.showToast("Moved \(report.removedCount) leftover(s) to Trash")
-                self.scanOrphans()
-                self.refreshStorageOverview()
+                if dryRun {
+                    self.showToast("Dry run — \(report.removedCount) leftover(s) would move to Trash")
+                } else {
+                    self.showTrashBanner("Moved \(report.removedCount) leftover(s) to Trash")
+                    self.scanOrphans()
+                    self.refreshStorageOverview()
+                }
             }
+        }
+    }
+
+    func selectAllOrphans(_ selected: Bool) {
+        for i in orphans.indices {
+            orphans[i].isSelected = selected
         }
     }
 
@@ -796,7 +834,17 @@ final class AppViewModel: ObservableObject {
     }
 
     func openFullDiskAccessSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+            "x-apple.systempreferences:com.apple.Settings.PrivacySecurity.extension?Privacy_AllFiles",
+            "x-apple.systempreferences:com.apple.Settings-privacy?Privacy_AllFiles"
+        ]
+        for string in candidates {
+            if let url = URL(string: string), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security") {
             NSWorkspace.shared.open(url)
         }
     }
@@ -808,8 +856,14 @@ final class AppViewModel: ObservableObject {
     }
 
     func openAutomationPrivacySettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
-            NSWorkspace.shared.open(url)
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation",
+            "x-apple.systempreferences:com.apple.Settings.PrivacySecurity.extension?Privacy_Automation"
+        ]
+        for string in candidates {
+            if let url = URL(string: string), NSWorkspace.shared.open(url) {
+                return
+            }
         }
     }
 
@@ -840,6 +894,83 @@ final class AppViewModel: ObservableObject {
                 toastMessage = nil
             }
         }
+    }
+
+    /// Persistent post-trash banner (dismiss manually).
+    func showTrashBanner(_ message: String) {
+        trashBannerMessage = message
+        toastMessage = nil
+    }
+
+    func dismissTrashBanner() {
+        trashBannerMessage = nil
+    }
+
+    func refreshCurrentModule() {
+        switch sidebar {
+        case .overview:
+            refreshStorageOverview(remeasure: true)
+        case .applications:
+            refreshApps()
+        case .leftovers:
+            scanOrphans()
+        case .largeFiles:
+            scanLargeFiles()
+        case .caches:
+            scanCaches()
+        case .developer:
+            scanDevDependencies()
+        case .history:
+            refreshReports()
+        }
+    }
+
+    func selectAllInCurrentModule() {
+        switch sidebar {
+        case .applications:
+            for item in displayedResources where !item.isDenied {
+                selectionOverrides[item.resource.path] = true
+            }
+        case .leftovers:
+            selectAllOrphans(true)
+        case .largeFiles:
+            selectAllLargeFiles(true)
+        case .caches:
+            selectAllCaches(true)
+        case .developer:
+            selectAllDevItems(true)
+        case .overview, .history:
+            break
+        }
+    }
+
+    func requestTrashForCurrentModule() {
+        switch sidebar {
+        case .applications:
+            requestUninstall()
+        case .leftovers:
+            requestOrphanRemoval()
+        case .largeFiles:
+            requestLargeFileRemoval()
+        case .caches:
+            requestCacheRemoval()
+        case .developer:
+            requestDevRemoval()
+        case .overview, .history:
+            break
+        }
+    }
+
+    func checkForUpdatesOrExplain() {
+        if UpdateController.shared.isConfigured {
+            UpdateController.shared.checkForUpdates()
+        } else {
+            showUpdatesUnavailableAlert = true
+        }
+    }
+
+    func openDiagnosticsFolder() {
+        NSWorkspace.shared.open(DiagnosticsLog.shared.directoryURL)
     }
 
     func copyDiagnostics() {

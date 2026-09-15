@@ -42,7 +42,9 @@ struct OrphanListView: View {
         .searchable(text: $filter, prompt: "Filter leftovers")
         .navigationTitle("Leftovers")
         .toolbar {
-            ToolbarItem {
+            ToolbarItemGroup {
+                Button("Select All") { model.selectAllOrphans(true) }
+                    .disabled(model.orphans.isEmpty)
                 Button("Scan") { model.scanOrphans() }
                     .disabled(model.isScanningOrphans)
             }
