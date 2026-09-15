@@ -141,7 +141,7 @@ public final class ResourceDiscoveryEngine: @unchecked Sendable {
                 let pathLower = child.path.lowercased()
 
                 let matches = needles.contains { needle in
-                    lower.contains(needle) || pathLower.contains(needle)
+                    Self.pathMatchesNeedle(nameLower: lower, pathLower: pathLower, needle: needle)
                 }
                 guard matches else { continue }
 
@@ -229,6 +229,31 @@ public final class ResourceDiscoveryEngine: @unchecked Sendable {
         return Array(needles).filter { $0.count >= 3 }
     }
 
+    /// Short needles (< 6 chars) must match a path component or filename boundary to avoid
+    /// false positives like "Box" matching "Sandbox".
+    public static func pathMatchesNeedle(nameLower: String, pathLower: String, needle: String) -> Bool {
+        let n = needle.lowercased()
+        guard !n.isEmpty else { return false }
+        if n.count >= 6 {
+            return nameLower.contains(n) || pathLower.contains(n)
+        }
+        if nameLower == n { return true }
+        if nameLower.hasPrefix(n + ".") || nameLower.hasPrefix(n + "-") || nameLower.hasPrefix(n + "_") {
+            return true
+        }
+        if nameLower.hasSuffix("." + n) || nameLower.hasSuffix("-" + n) || nameLower.hasSuffix("_" + n) {
+            return true
+        }
+        let components = pathLower.split(separator: "/").map(String.init)
+        return components.contains { component in
+            if component == n { return true }
+            if component.hasPrefix(n + ".") || component.hasPrefix(n + "-") || component.hasPrefix(n + "_") {
+                return true
+            }
+            return PathAllowlist.pathMatchesBundleID("/" + component, bundleID: n)
+        }
+    }
+
     public func makeResource(
         at url: URL,
         category: ResourceCategory,
@@ -274,20 +299,14 @@ public final class ResourceDiscoveryEngine: @unchecked Sendable {
     /// Best-effort: find pkg IDs that look related and return their file lists.
     public func pkgReceiptPaths(for app: AppIdentity) -> [String] {
         guard !app.bundleIdentifier.isEmpty else { return [] }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/pkgutil")
-        process.arguments = ["--pkgs"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
+        let pkgsResult = TimedProcess.run(
+            executable: "/usr/sbin/pkgutil",
+            arguments: ["--pkgs"],
+            timeout: 10
+        )
+        guard !pkgsResult.timedOut, let output = String(data: pkgsResult.stdout, encoding: .utf8) else {
             return []
         }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8) else { return [] }
         let pkgs = output.split(separator: "\n").map(String.init)
         let related = pkgs.filter {
             $0.localizedCaseInsensitiveContains(app.bundleIdentifier)
@@ -295,24 +314,17 @@ public final class ResourceDiscoveryEngine: @unchecked Sendable {
         }
         var paths: [String] = []
         for pkg in related.prefix(5) {
-            let list = Process()
-            list.executableURL = URL(fileURLWithPath: "/usr/sbin/pkgutil")
-            list.arguments = ["--files", pkg]
-            let out = Pipe()
-            list.standardOutput = out
-            list.standardError = Pipe()
-            do {
-                try list.run()
-                list.waitUntilExit()
-            } catch {
+            let listResult = TimedProcess.run(
+                executable: "/usr/sbin/pkgutil",
+                arguments: ["--files", pkg],
+                timeout: 10
+            )
+            guard !listResult.timedOut, let text = String(data: listResult.stdout, encoding: .utf8) else {
                 continue
             }
-            let listData = out.fileHandleForReading.readDataToEndOfFile()
-            if let text = String(data: listData, encoding: .utf8) {
-                // pkgutil --files returns relative paths; absolute root unknown — skip unless absolute.
-                for line in text.split(separator: "\n").map(String.init) where line.hasPrefix("/") {
-                    paths.append(line)
-                }
+            // pkgutil --files returns relative paths; absolute root unknown — skip unless absolute.
+            for line in text.split(separator: "\n").map(String.init) where line.hasPrefix("/") {
+                paths.append(line)
             }
         }
         return paths

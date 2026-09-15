@@ -70,12 +70,14 @@ struct AppDetailView: View {
                         dropHint
                     }
                 }
-            } else {
+            } else if model.apps.isEmpty {
                 ContentUnavailableView(
                     "No Applications",
                     systemImage: "tray",
                     description: Text("No third-party applications were found. Drop a .app onto the window to analyze it.")
                 )
+            } else {
+                dropHint
             }
         }
     }
@@ -366,6 +368,10 @@ struct ConfirmRemovalSheet: View {
                 Button("Cancel", role: .cancel) { model.showConfirmSheet = false }
                     .keyboardShortcut(.cancelAction)
                 Spacer()
+                Button("Dry Run") {
+                    model.performConfirmedAction(dryRun: true)
+                }
+                .keyboardShortcut("d", modifiers: [.command])
                 Button("Move to Trash", role: .destructive) {
                     model.performConfirmedAction(dryRun: false)
                 }

@@ -205,15 +205,25 @@ public final class ImageCompressor: @unchecked Sendable {
         let parent = url.deletingLastPathComponent()
         let stem = url.deletingPathExtension().lastPathComponent
         var finalURL = parent.appendingPathComponent("\(stem).\(outExt)")
+        if finalURL.path == path || fileManager.fileExists(atPath: finalURL.path) {
+            finalURL = parent.appendingPathComponent("\(stem)_compressed.\(outExt)")
+        }
 
         do {
-            var resulting: NSURL?
-            try fileManager.trashItem(at: url, resultingItemURL: &resulting)
-
-            if fileManager.fileExists(atPath: finalURL.path) {
-                finalURL = parent.appendingPathComponent("\(stem)_compressed.\(outExt)")
-            }
+            // Place compressed file first so the original stays intact until replace succeeds.
             try fileManager.moveItem(at: chosenURL, to: finalURL)
+            var resulting: NSURL?
+            do {
+                try fileManager.trashItem(at: url, resultingItemURL: &resulting)
+            } catch {
+                try? fileManager.removeItem(at: finalURL)
+                return failure(
+                    path: path,
+                    original: originalSize,
+                    message: error.localizedDescription,
+                    compressed: chosenSize
+                )
+            }
             return VideoCompressionResult(
                 originalPath: path,
                 outputPath: finalURL.path,

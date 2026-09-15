@@ -92,20 +92,36 @@ struct ContentView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if let toast = model.toastMessage {
-                ToastBanner(
-                    message: toast,
-                    onOpenTrash: { model.openTrash() },
-                    onViewReport: {
-                        model.sidebar = .history
-                        model.toastMessage = nil
-                    }
-                )
-                .padding()
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+            VStack(spacing: 8) {
+                if let banner = model.trashBannerMessage {
+                    TrashBanner(
+                        message: banner,
+                        onOpenTrash: { model.openTrash() },
+                        onViewReport: {
+                            model.sidebar = .history
+                            model.dismissTrashBanner()
+                        },
+                        onDismiss: { model.dismissTrashBanner() }
+                    )
+                    .padding(.horizontal)
+                }
+                if let toast = model.toastMessage {
+                    ToastBanner(
+                        message: toast,
+                        onOpenTrash: { model.openTrash() },
+                        onViewReport: {
+                            model.sidebar = .history
+                            model.toastMessage = nil
+                        }
+                    )
+                    .padding(.horizontal)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .padding(.bottom)
         }
         .animation(.easeInOut, value: model.toastMessage)
+        .animation(.easeInOut, value: model.trashBannerMessage)
         .alert("Something went wrong", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -113,6 +129,11 @@ struct ContentView: View {
             Button("OK", role: .cancel) { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
+        }
+        .alert("Updates unavailable", isPresented: $model.showUpdatesUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Sparkle auto-update is not configured for this build (empty SUFeedURL / SUPublicEDKey). Install a release packaged with update keys, or check GitHub Releases manually.")
         }
         .confirmationDialog(
             "Empty Trash?",
@@ -185,8 +206,30 @@ struct ToastBanner: View {
         }
         .padding(12)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .shadow(radius: 8, y: 2)
         .frame(maxWidth: 520)
+    }
+}
+
+struct TrashBanner: View {
+    let message: String
+    var onOpenTrash: () -> Void
+    var onViewReport: () -> Void
+    var onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "trash")
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.callout)
+            Spacer()
+            Button("Open Trash", action: onOpenTrash)
+            Button("View Report", action: onViewReport)
+            Button("Dismiss", action: onDismiss)
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .frame(maxWidth: 560)
     }
 }
 

@@ -100,17 +100,44 @@ public final class LargeFileScanner: @unchecked Sendable {
     private func spotlightScan(
         roots: [URL],
         minimumBytes: Int64,
-        maxFiles: Int
+        maxFiles: Int,
+        timeout: TimeInterval = 8
     ) -> [LargeFileItem] {
         let existingRoots = roots.filter { fileManager.fileExists(atPath: $0.path) }
         guard !existingRoots.isEmpty else { return [] }
 
+        final class Box: @unchecked Sendable {
+            var value: [LargeFileItem] = []
+        }
+        let box = Box()
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            defer { group.leave() }
+            box.value = self.spotlightScanSync(
+                roots: existingRoots,
+                minimumBytes: minimumBytes,
+                maxFiles: maxFiles
+            )
+        }
+        if group.wait(timeout: .now() + timeout) == .timedOut {
+            DiagnosticsLog.shared.info("Spotlight MDQuery timed out after \(Int(timeout))s — using FileManager only")
+            return []
+        }
+        return box.value
+    }
+
+    private func spotlightScanSync(
+        roots: [URL],
+        minimumBytes: Int64,
+        maxFiles: Int
+    ) -> [LargeFileItem] {
         let predicate = "kMDItemFSSize >= \(minimumBytes)" as CFString
         guard let query = MDQueryCreate(kCFAllocatorDefault, predicate, nil, nil) else {
             return []
         }
 
-        let scope = existingRoots.map(\.path) as CFArray
+        let scope = roots.map(\.path) as CFArray
         MDQuerySetSearchScope(query, scope, 0)
 
         guard MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue)) else {

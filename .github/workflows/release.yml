@@ -26,7 +26,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -52,6 +52,17 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version=$VERSION tag=v$VERSION"
+
+      - name: Generate project and run tests
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          xcodebuild test \
+            -scheme UninstallerCore \
+            -destination 'platform=macOS' \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_ALLOWED=YES
 
       - name: Prepare Sparkle private key (optional)
         id: sparkle

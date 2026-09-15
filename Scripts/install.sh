@@ -10,8 +10,9 @@
 # Env:
 #   REPO   — GitHub "owner/repo" (required unless INSTALL_ZIP_URL is set)
 #   TAG    — release tag (default: latest)
-#   INSTALL_ZIP_URL — direct zip URL (skips GitHub API)
+#   INSTALL_ZIP_URL — direct zip URL (skips GitHub API); must be https://github.com/… or file://…
 #   DEST   — install directory (default: ~/Applications)
+#   SKIP_CHECKSUM=1 — skip SHA-256 verification (not recommended)
 set -euo pipefail
 
 DEST="${DEST:-$HOME/Applications}"
@@ -22,8 +23,24 @@ trap 'rm -rf "$TMP"' EXIT
 echo "SafeUninstaller installer"
 echo "-------------------------"
 
+is_allowed_zip_url() {
+  local u="$1"
+  [[ -f "$u" ]] && return 0
+  [[ "$u" == file://* ]] && return 0
+  [[ "$u" == https://github.com/* ]] && return 0
+  return 1
+}
+
+SHA_URL=""
 if [[ -n "${INSTALL_ZIP_URL:-}" ]]; then
   ZIP_URL="$INSTALL_ZIP_URL"
+  if ! is_allowed_zip_url "$ZIP_URL"; then
+    echo "error: INSTALL_ZIP_URL must be a local path, file://…, or https://github.com/…" >&2
+    exit 1
+  fi
+  if [[ "$ZIP_URL" == https://github.com/* && "$ZIP_URL" == *.zip ]]; then
+    SHA_URL="${ZIP_URL}.sha256"
+  fi
 elif [[ -n "${REPO:-}" ]]; then
   if [[ "$TAG" == "latest" ]]; then
     API="https://api.github.com/repos/${REPO}/releases/latest"
@@ -31,19 +48,29 @@ elif [[ -n "${REPO:-}" ]]; then
     API="https://api.github.com/repos/${REPO}/releases/tags/${TAG}"
   fi
   echo "Fetching release metadata from $API …"
-  ZIP_URL="$(curl -fsSL "$API" | python3 -c '
+  META="$(curl -fsSL "$API")"
+  ZIP_URL="$(printf '%s' "$META" | python3 -c '
 import json,sys
 data=json.load(sys.stdin)
 for a in data.get("assets", []):
     name=a.get("name","")
-    if name.startswith("SafeUninstaller-") and name.endswith(".zip"):
+    if name.startswith("SafeUninstaller-") and name.endswith(".zip") and not name.endswith(".zip.sha256"):
         print(a["browser_download_url"])
         sys.exit(0)
 sys.exit("No SafeUninstaller-*.zip asset found on this release")
 ')"
+  SHA_URL="$(printf '%s' "$META" | python3 -c '
+import json,sys
+data=json.load(sys.stdin)
+for a in data.get("assets", []):
+    name=a.get("name","")
+    if name.startswith("SafeUninstaller-") and name.endswith(".zip.sha256"):
+        print(a["browser_download_url"])
+        sys.exit(0)
+' || true)"
 else
   cat >&2 <<'EOF'
-error: set REPO=owner/repo or INSTALL_ZIP_URL=https://.../SafeUninstaller-x.y.z.zip
+error: set REPO=owner/repo or INSTALL_ZIP_URL=https://github.com/.../SafeUninstaller-x.y.z.zip
 
 Examples:
   REPO=yourname/safeuninstaller curl -fsSL https://raw.githubusercontent.com/yourname/safeuninstaller/main/Scripts/install.sh | bash
@@ -56,12 +83,56 @@ echo "Downloading: $ZIP_URL"
 ZIP_FILE="$TMP/SafeUninstaller.zip"
 if [[ -f "$ZIP_URL" ]]; then
   cp "$ZIP_URL" "$ZIP_FILE"
+  if [[ -f "${ZIP_URL}.sha256" ]]; then
+    cp "${ZIP_URL}.sha256" "$TMP/SafeUninstaller.zip.sha256"
+    SHA_URL="$TMP/SafeUninstaller.zip.sha256"
+  fi
 elif [[ "$ZIP_URL" == file://* ]]; then
   LOCAL_PATH="${ZIP_URL#file://}"
   LOCAL_PATH="$(printf '%b' "${LOCAL_PATH//%/\\x}")"
   cp "$LOCAL_PATH" "$ZIP_FILE"
+  if [[ -f "${LOCAL_PATH}.sha256" ]]; then
+    cp "${LOCAL_PATH}.sha256" "$TMP/SafeUninstaller.zip.sha256"
+    SHA_URL="$TMP/SafeUninstaller.zip.sha256"
+  fi
 else
   curl -fL --progress-bar -o "$ZIP_FILE" "$ZIP_URL"
+fi
+
+if [[ "${SKIP_CHECKSUM:-0}" != "1" ]]; then
+  SHA_FILE="$TMP/SafeUninstaller.zip.sha256"
+  if [[ -n "${SHA_URL:-}" && "$SHA_URL" != "$TMP/SafeUninstaller.zip.sha256" ]]; then
+    if [[ -f "$SHA_URL" ]]; then
+      cp "$SHA_URL" "$SHA_FILE"
+    elif [[ "$SHA_URL" == https://github.com/* ]]; then
+      echo "Downloading checksum: $SHA_URL"
+      if ! curl -fL --progress-bar -o "$SHA_FILE" "$SHA_URL"; then
+        echo "error: could not download .sha256 — refuse to install without verification" >&2
+        echo "       set SKIP_CHECKSUM=1 to override (not recommended)" >&2
+        exit 1
+      fi
+    fi
+  fi
+  if [[ -f "$SHA_FILE" ]]; then
+    echo "Verifying SHA-256…"
+    EXPECTED="$(awk '{print $1}' "$SHA_FILE" | head -n 1)"
+    ACTUAL="$(shasum -a 256 "$ZIP_FILE" | awk '{print $1}')"
+    if [[ -z "$EXPECTED" || "$EXPECTED" != "$ACTUAL" ]]; then
+      echo "error: checksum mismatch" >&2
+      echo "  expected: $EXPECTED" >&2
+      echo "  actual:   $ACTUAL" >&2
+      exit 1
+    fi
+    echo "Checksum OK."
+  elif [[ "$ZIP_URL" == https://github.com/* ]]; then
+    echo "error: no .sha256 asset found for this release — refuse to install" >&2
+    echo "       set SKIP_CHECKSUM=1 to override (not recommended)" >&2
+    exit 1
+  else
+    echo "warning: no .sha256 beside local zip — skipping verification"
+  fi
+else
+  echo "warning: SKIP_CHECKSUM=1 — integrity not verified"
 fi
 
 echo "Extracting…"
@@ -81,9 +152,8 @@ fi
 
 ditto "$APP_SRC" "$APP_DEST"
 
-echo "Clearing Gatekeeper quarantine attributes…"
+echo "Clearing Gatekeeper quarantine attribute…"
 xattr -dr com.apple.quarantine "$APP_DEST" 2>/dev/null || true
-xattr -cr "$APP_DEST" 2>/dev/null || true
 
 if xattr -l "$APP_DEST" 2>/dev/null | grep -q com.apple.quarantine; then
   echo "warning: quarantine attribute may still be present — use Right-click → Open on first launch"

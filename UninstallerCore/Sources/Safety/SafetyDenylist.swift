@@ -6,10 +6,12 @@ public final class SafetyDenylist: @unchecked Sendable {
 
     private let protectedPrefixes: [String]
     private let protectedBundlePrefixes: [String]
+    private let sensitiveHomeRelativePrefixes: [String]
 
     public init(
         protectedPrefixes: [String]? = nil,
-        protectedBundlePrefixes: [String]? = nil
+        protectedBundlePrefixes: [String]? = nil,
+        sensitiveHomeRelativePrefixes: [String]? = nil
     ) {
         self.protectedPrefixes = protectedPrefixes ?? [
             "/System",
@@ -40,6 +42,20 @@ public final class SafetyDenylist: @unchecked Sendable {
             "com.apple.security.",
             "com.apple.loginwindow"
         ]
+        self.sensitiveHomeRelativePrefixes = sensitiveHomeRelativePrefixes ?? [
+            "Library/Keychains",
+            "Library/Mail",
+            "Library/Messages",
+            "Library/Safari",
+            "Library/Accounts",
+            "Library/Cookies",
+            "Library/Calendars",
+            "Library/Reminders",
+            "Library/IdentityServices",
+            "Library/Application Support/AddressBook",
+            ".ssh",
+            ".gnupg"
+        ]
     }
 
     public func denyReason(for path: String, bundleHint: String? = nil) -> String? {
@@ -63,6 +79,19 @@ public final class SafetyDenylist: @unchecked Sendable {
 
         // Never allow deleting entire Library folders.
         let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let homeStandard = (home as NSString).standardizingPath
+
+        if standardized == homeStandard {
+            return "Refusing to delete home directory"
+        }
+
+        for relative in sensitiveHomeRelativePrefixes {
+            let prefix = (homeStandard as NSString).appendingPathComponent(relative)
+            if standardized == prefix || standardized.hasPrefix(prefix + "/") {
+                return "Sensitive user data: \(relative)"
+            }
+        }
+
         let dangerousExact = [
             home + "/Library",
             home + "/Library/Preferences",
@@ -104,5 +133,13 @@ public final class SafetyDenylist: @unchecked Sendable {
 
     public func isDenied(path: String, bundleHint: String? = nil) -> Bool {
         denyReason(for: path, bundleHint: bundleHint) != nil
+    }
+
+    /// Final gate immediately before trash — re-check denylist and live symlink status.
+    public func preTrashDenialReason(for path: String) -> String? {
+        if PathAllowlist.isSymlink(at: path) {
+            return "Refusing symlink leaves"
+        }
+        return denyReason(for: path)
     }
 }

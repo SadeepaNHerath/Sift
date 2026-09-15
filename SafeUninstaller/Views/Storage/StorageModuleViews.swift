@@ -11,6 +11,8 @@ struct LargeFilesPane: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("Select All") { model.selectAllLargeFiles(true) }
+                    .disabled(model.largeFileItems.isEmpty)
                 Button("Scan") { model.scanLargeFiles() }
                     .disabled(model.isScanningLargeFiles)
             }
@@ -269,6 +271,8 @@ struct DeveloperPane: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("Select All") { model.selectAllDevItems(true) }
+                    .disabled(model.devItems.isEmpty)
                 Button("Scan") { model.scanDevDependencies() }
                     .disabled(model.isScanningDev)
             }
