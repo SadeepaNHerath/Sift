@@ -8,14 +8,9 @@ struct ContentView: View {
         NavigationSplitView {
             List(selection: $model.sidebar) {
                 ForEach(AppViewModel.SidebarItem.allCases) { item in
-                    Label {
-                        Text(item.rawValue)
-                    } icon: {
-                        Image(systemName: item.systemImage)
-                            .symbolRenderingMode(.hierarchical)
-                    }
-                    .tag(item)
-                    .accessibilityIdentifier("sidebar.\(item.rawValue)")
+                    Label(item.rawValue, systemImage: item.systemImage)
+                        .tag(item)
+                        .accessibilityIdentifier("sidebar.\(item.rawValue)")
                 }
                 if !model.hasFDA {
                     Divider()
@@ -28,7 +23,7 @@ struct ContentView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 160, ideal: 190, max: 240)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 260)
         } content: {
             Group {
                 switch model.sidebar {
@@ -48,7 +43,7 @@ struct ContentView: View {
                     ReportsListView()
                 }
             }
-            .navigationSplitViewColumnWidth(min: 280, ideal: 360, max: 560)
+            .navigationSplitViewColumnWidth(ideal: 340)
         } detail: {
             switch model.sidebar {
             case .overview:
@@ -67,6 +62,7 @@ struct ContentView: View {
                 ReportDetailView()
             }
         }
+        .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Setup") { model.showSetupSheet = true }
