@@ -139,9 +139,9 @@ public enum VideoQualityPreset: String, Codable, Sendable, CaseIterable, Identif
 
     public var detail: String {
         switch self {
-        case .smaller: return "1080p HEVC / medium — max savings"
-        case .balanced: return "HEVC high quality — good size/quality"
-        case .higherQuality: return "HEVC highest / 4K when source allows"
+        case .smaller: return "1080p / medium — max savings"
+        case .balanced: return "Good size/quality balance"
+        case .higherQuality: return "Highest quality when source allows"
         }
     }
 
@@ -155,10 +155,42 @@ public enum VideoQualityPreset: String, Codable, Sendable, CaseIterable, Identif
     }
 }
 
+public enum VideoOutputFormat: String, Codable, Sendable, CaseIterable, Identifiable {
+    case mp4H264
+    case mp4HEVC
+    case mov
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .mp4H264: return "MP4 H.264"
+        case .mp4HEVC: return "MP4 HEVC"
+        case .mov: return "MOV"
+        }
+    }
+
+    public var fileExtension: String {
+        switch self {
+        case .mp4H264, .mp4HEVC: return "mp4"
+        case .mov: return "mov"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .mp4H264: return "Widely compatible MP4"
+        case .mp4HEVC: return "Smaller files when HEVC is available"
+        case .mov: return "QuickTime MOV container"
+        }
+    }
+}
+
 public enum ImageOutputFormat: String, Codable, Sendable, CaseIterable, Identifiable {
     case automatic
     case heic
     case jpeg
+    case png
 
     public var id: String { rawValue }
 
@@ -167,6 +199,7 @@ public enum ImageOutputFormat: String, Codable, Sendable, CaseIterable, Identifi
         case .automatic: return "Automatic"
         case .heic: return "HEIC"
         case .jpeg: return "JPEG"
+        case .png: return "PNG"
         }
     }
 
@@ -175,6 +208,7 @@ public enum ImageOutputFormat: String, Codable, Sendable, CaseIterable, Identifi
         case .automatic: return "Pick whichever of HEIC or JPEG is smaller"
         case .heic: return "Force HEIC when it is smaller than the original"
         case .jpeg: return "Force JPEG (~0.7 quality) when smaller"
+        case .png: return "Lossless PNG (only if smaller than original)"
         }
     }
 }

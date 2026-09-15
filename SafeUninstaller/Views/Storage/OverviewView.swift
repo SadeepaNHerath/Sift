@@ -10,6 +10,7 @@ struct OverviewView: View {
                 Text("Storage").font(.title2.bold())
                 Text("See where space goes, then free it safely. Items go to Trash first — empty Trash to reclaim space.")
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if model.isLoadingOverview && model.storageOverview == nil {
                     ProgressView("Measuring…")
@@ -19,13 +20,13 @@ struct OverviewView: View {
                     gauge(overview)
                     categoryList(overview)
                     emptyTrashCard
-                    quickLinks
                 } else {
                     Button("Measure Storage") { model.refreshStorageOverview(remeasure: true) }
                         .buttonStyle(.borderedProminent)
                 }
             }
             .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Overview")
         .toolbar {
@@ -65,6 +66,7 @@ struct OverviewView: View {
             Text("Folder totals are sampled with a time budget so the dashboard stays fast; very large folders can read a bit low (~). Refresh remeasures more deeply.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             let maxSize = max(overview.categories.map(\.byteSize).max() ?? 1, 1)
             ForEach(overview.categories) { cat in
                 Button {
@@ -104,35 +106,6 @@ struct OverviewView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var quickLinks: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Free space").font(.headline)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-                link("Applications", "Uninstall completely", .applications, "square.grid.2x2")
-                link("Leftovers", "Orphaned app data", .leftovers, "doc.badge.questionmark")
-                link("Large Files", "Videos & big files", .largeFiles, "film.stack")
-                link("Caches", "App caches", .caches, "internaldrive")
-                link("Developer", "Xcode & deps", .developer, "hammer")
-            }
-        }
-    }
-
-    private func link(_ title: String, _ subtitle: String, _ item: AppViewModel.SidebarItem, _ image: String) -> some View {
-        Button {
-            model.sidebar = item
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: image)
-                Text(title).font(.callout.weight(.semibold))
-                Text(subtitle).font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
     }
 
     private func jump(to kind: StorageCategoryKind) {

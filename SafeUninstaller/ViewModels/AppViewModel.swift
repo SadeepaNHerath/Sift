@@ -21,7 +21,7 @@ final class AppViewModel: ObservableObject {
             switch self {
             case .overview: return "gauge.with.dots.needle.33percent"
             case .applications: return "square.grid.2x2"
-            case .leftovers: return "doc.badge.questionmark"
+            case .leftovers: return "questionmark.folder"
             case .largeFiles: return "film.stack"
             case .caches: return "internaldrive"
             case .developer: return "hammer"
@@ -64,6 +64,7 @@ final class AppViewModel: ObservableObject {
     @Published var compressingPath: String?
     @Published var compressionProgress: Double = 0
     @Published var videoQualityPreset: VideoQualityPreset = .balanced
+    @Published var videoOutputFormat: VideoOutputFormat = .mp4HEVC
     @Published var imageOutputFormat: ImageOutputFormat = .automatic
     @Published var lastCompressionSavings: String?
     @Published var compressionEstimateText: String?
@@ -339,8 +340,9 @@ final class AppViewModel: ObservableObject {
         compressionProgress = 0
         lastCompressionSavings = nil
         compressionEstimateText = nil
-        statusMessage = "Compressing \(item.displayName)…"
+        statusMessage = "Converting \(item.displayName)…"
         let quality = videoQualityPreset
+        let format = videoOutputFormat
         let path = item.path
         let originalBytes = item.byteSize
 
@@ -355,7 +357,7 @@ final class AppViewModel: ObservableObject {
                 }
             }
 
-            let result = await service.videoCompressor.compress(path: path, quality: quality) { fraction in
+            let result = await service.videoCompressor.compress(path: path, quality: quality, format: format) { fraction in
                 Task { @MainActor in
                     if self.compressingPath == path {
                         self.compressionProgress = fraction
@@ -369,7 +371,7 @@ final class AppViewModel: ObservableObject {
                 self.compressionEstimateText = nil
                 self.compressionTask = nil
                 if result.wasCancelled {
-                    self.statusMessage = "Compression cancelled"
+                    self.statusMessage = "Conversion cancelled"
                     return
                 }
                 if result.success {
@@ -377,13 +379,13 @@ final class AppViewModel: ObservableObject {
                     let after = ByteCountFormatter.string(fromByteCount: result.compressedBytes, countStyle: .file)
                     let saved = ByteCountFormatter.string(fromByteCount: result.savedBytes, countStyle: .file)
                     self.lastCompressionSavings = "\(before) → \(after) (−\(result.savedPercent)%, saved \(saved))"
-                    self.showToast("Compressed — \(before) → \(after) (−\(result.savedPercent)%). Original in Trash.")
+                    self.showToast("Converted — \(before) → \(after) (−\(result.savedPercent)%). Original in Trash.")
                     self.scanLargeFiles()
                     self.refreshStorageOverview()
-                    self.statusMessage = "Compression complete"
+                    self.statusMessage = "Conversion complete"
                 } else {
-                    self.errorMessage = result.errorMessage ?? "Compression failed"
-                    self.statusMessage = "Compression failed"
+                    self.errorMessage = result.errorMessage ?? "Conversion failed"
+                    self.statusMessage = "Conversion failed"
                 }
             }
         }
@@ -396,7 +398,7 @@ final class AppViewModel: ObservableObject {
         compressionProgress = 0
         lastCompressionSavings = nil
         compressionEstimateText = nil
-        statusMessage = "Compressing \(item.displayName)…"
+        statusMessage = "Converting \(item.displayName)…"
         let path = item.path
         let format = imageOutputFormat
         let originalBytes = item.byteSize
@@ -421,20 +423,20 @@ final class AppViewModel: ObservableObject {
                 self.compressionEstimateText = nil
                 self.compressionTask = nil
                 if result.wasCancelled {
-                    self.statusMessage = "Compression cancelled"
+                    self.statusMessage = "Conversion cancelled"
                     return
                 }
                 if result.success {
                     let before = ByteCountFormatter.string(fromByteCount: result.originalBytes, countStyle: .file)
                     let after = ByteCountFormatter.string(fromByteCount: result.compressedBytes, countStyle: .file)
                     self.lastCompressionSavings = "\(before) → \(after) (−\(result.savedPercent)%)"
-                    self.showToast("Image compressed — \(before) → \(after). Original in Trash.")
+                    self.showToast("Image converted — \(before) → \(after). Original in Trash.")
                     self.scanLargeFiles()
                     self.refreshStorageOverview()
-                    self.statusMessage = "Compression complete"
+                    self.statusMessage = "Conversion complete"
                 } else {
-                    self.errorMessage = result.errorMessage ?? "Image compression failed"
-                    self.statusMessage = "Compression failed"
+                    self.errorMessage = result.errorMessage ?? "Image conversion failed"
+                    self.statusMessage = "Conversion failed"
                 }
             }
         }
@@ -449,7 +451,7 @@ final class AppViewModel: ObservableObject {
             compressingPath = nil
             compressionProgress = 0
             compressionEstimateText = nil
-            statusMessage = "Compression cancelled"
+            statusMessage = "Conversion cancelled"
         }
     }
 

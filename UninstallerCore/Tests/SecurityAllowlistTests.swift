@@ -87,6 +87,61 @@ final class SecurityAllowlistTests: XCTestCase {
         XCTAssertFalse(engine.isRelated(to: "com.other.product", installedIDs: installed))
     }
 
+    func testOrphanHidesWhatsAppFamilyWhenInstalled() {
+        let engine = OrphanSearchEngine()
+        let installedIDs: Set<String> = ["net.whatsapp.WhatsApp"]
+        let vendors: Set<String> = ["net.whatsapp"]
+        XCTAssertTrue(engine.shouldSkipInferredID(
+            "group.net.whatsapp.WhatsApp.private",
+            installedIDs: installedIDs,
+            installedVendors: vendors
+        ))
+        XCTAssertTrue(engine.shouldSkipInferredID(
+            "group.net.whatsapp.WhatsApp.shared",
+            installedIDs: installedIDs,
+            installedVendors: vendors
+        ))
+        XCTAssertTrue(engine.shouldSkipInferredID(
+            "group.com.facebook.family",
+            installedIDs: installedIDs,
+            installedVendors: vendors
+        ))
+        XCTAssertFalse(engine.shouldSkipInferredID(
+            "com.gone.app",
+            installedIDs: installedIDs,
+            installedVendors: vendors
+        ))
+    }
+
+    func testOrphanHidesDockerAndCUPS() {
+        let engine = OrphanSearchEngine()
+        let installedIDs: Set<String> = ["com.docker.docker"]
+        let vendors: Set<String> = ["com.docker"]
+        XCTAssertTrue(engine.shouldSkipInferredID(
+            "com.docker.vmnetd",
+            installedIDs: installedIDs,
+            installedVendors: vendors
+        ))
+        XCTAssertTrue(engine.shouldSkipInferredID(
+            "org.cups.PrintingPrefs.plist",
+            installedIDs: [],
+            installedVendors: []
+        ))
+        XCTAssertTrue(engine.shouldSkipInferredID(
+            "is.workflow.shortcuts",
+            installedIDs: [],
+            installedVendors: []
+        ))
+    }
+
+    func testNormalizeStripsGroupPrefix() {
+        XCTAssertEqual(
+            OrphanSearchEngine.normalizeBundleID("group.net.whatsapp.WhatsApp.private"),
+            "net.whatsapp.whatsapp.private"
+        )
+        XCTAssertEqual(OrphanSearchEngine.vendorPrefix(from: "net.whatsapp.WhatsApp"), "net.whatsapp")
+    }
+
     func testSubstringFalsePositiveNotExactBundle() throws {
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)

@@ -8,9 +8,14 @@ struct ContentView: View {
         NavigationSplitView {
             List(selection: $model.sidebar) {
                 ForEach(AppViewModel.SidebarItem.allCases) { item in
-                    Label(item.rawValue, systemImage: item.systemImage)
-                        .tag(item)
-                        .accessibilityIdentifier("sidebar.\(item.rawValue)")
+                    Label {
+                        Text(item.rawValue)
+                    } icon: {
+                        Image(systemName: item.systemImage)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                    .tag(item)
+                    .accessibilityIdentifier("sidebar.\(item.rawValue)")
                 }
                 if !model.hasFDA {
                     Divider()
@@ -23,24 +28,27 @@ struct ContentView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
+            .navigationSplitViewColumnWidth(min: 160, ideal: 190, max: 240)
         } content: {
-            switch model.sidebar {
-            case .overview:
-                OverviewSidebarList()
-            case .applications:
-                ApplicationListView()
-            case .leftovers:
-                OrphanListView()
-            case .largeFiles:
-                LargeFilesPane()
-            case .caches:
-                CachesPane()
-            case .developer:
-                DeveloperPane()
-            case .history:
-                ReportsListView()
+            Group {
+                switch model.sidebar {
+                case .overview:
+                    OverviewSidebarList()
+                case .applications:
+                    ApplicationListView()
+                case .leftovers:
+                    OrphanListView()
+                case .largeFiles:
+                    LargeFilesPane()
+                case .caches:
+                    CachesPane()
+                case .developer:
+                    DeveloperPane()
+                case .history:
+                    ReportsListView()
+                }
             }
+            .navigationSplitViewColumnWidth(min: 280, ideal: 360, max: 560)
         } detail: {
             switch model.sidebar {
             case .overview:
