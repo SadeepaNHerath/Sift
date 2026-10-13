@@ -81,33 +81,6 @@ var (
 		},
 	}
 
-
-	historyCmd = &cobra.Command{
-		Use:   "history",
-		Short: "View audit logs and history of cleanup operations",
-		Long:  "Review the historical log of all cleanup and uninstall operations, including deleted files, timestamps, and freed disk space.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
-	updateCmd = &cobra.Command{
-		Use:   "update",
-		Short: "Check for and install updates to Sift",
-		Long:  "Check the GitHub repository for new releases of Sift (sf) and update the binary to the latest version.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
-	completionCmd = &cobra.Command{
-		Use:   "completion [bash|zsh|fish|powershell]",
-		Short: "Generate shell completion scripts",
-		Long:  "Generate shell completion scripts for Sift (bash, zsh, fish, powershell).",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
 )
 
 func init() {
