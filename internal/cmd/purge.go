@@ -15,10 +15,10 @@ import (
 )
 
 var (
-	purgeDryRun bool
-	purgeYes    bool
-	purgePaths  []string
-	purgeAll    bool
+	purgeDryRun         bool
+	purgeYes            bool
+	purgePaths          []string
+	purgeAll            bool
 	purgeMinAge         time.Duration
 	purgeAI             bool
 	purgeModels         bool

@@ -239,4 +239,3 @@ func wipeSinglePrivacyPath(p string) error {
 	}
 	return core.MoveToTrash(norm)
 }
-

@@ -24,6 +24,7 @@ func executeDoctorWithArgs(args []string) (string, error) {
 
 func TestDoctorCmd_CIFlag(t *testing.T) {
 	setupTestHome(t)
+	defer resetDoctorFlags()
 
 	out, err := executeDoctorWithArgs([]string{"--ci"})
 	// Exit error may or may not occur depending on local macOS state; check output formatting
@@ -35,6 +36,7 @@ func TestDoctorCmd_CIFlag(t *testing.T) {
 
 func TestDoctorCmd_ExitCodeWithWarningThreshold(t *testing.T) {
 	setupTestHome(t)
+	defer resetDoctorFlags()
 
 	// In test environment, certain checks (e.g. disk/perms) generate warnings
 	_, err := executeDoctorWithArgs([]string{"--exit-code", "--fail-on", "warning"})
@@ -50,6 +52,7 @@ func TestDoctorCmd_ExitCodeWithWarningThreshold(t *testing.T) {
 
 func TestPurgeCmd_NonInteractiveQuiet(t *testing.T) {
 	tempHome := setupTestHome(t)
+	defer resetPurgeFlags()
 	projDir := filepath.Join(tempHome, "Projects", "ci-app")
 	distDir := filepath.Join(projDir, "dist")
 	_ = os.MkdirAll(distDir, 0755)

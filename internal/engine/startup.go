@@ -17,24 +17,24 @@ import (
 type ServiceLevel string
 
 const (
-	LevelUserAgent    ServiceLevel = "User Agent"     // ~/Library/LaunchAgents
-	LevelGlobalAgent  ServiceLevel = "Global Agent"   // /Library/LaunchAgents
+	LevelUserAgent    ServiceLevel = "User Agent"    // ~/Library/LaunchAgents
+	LevelGlobalAgent  ServiceLevel = "Global Agent"  // /Library/LaunchAgents
 	LevelSystemDaemon ServiceLevel = "System Daemon" // /Library/LaunchDaemons
 )
 
 // LaunchService represents a macOS LaunchAgent or LaunchDaemon.
 type LaunchService struct {
-	Label       string       `json:"label"`
-	Level       ServiceLevel `json:"level"`
-	PlistPath   string       `json:"plist_path"`
-	BinaryPath  string       `json:"binary_path"`
-	Loaded      bool         `json:"loaded"`
-	PID         int          `json:"pid"`
-	LastExit    int          `json:"last_exit"`
-	IsZombie    bool         `json:"is_zombie"`
-	RunAtLoad   bool         `json:"run_at_load"`
-	KeepAlive   bool         `json:"keep_alive"`
-	Domain      string       `json:"domain"`
+	Label      string       `json:"label"`
+	Level      ServiceLevel `json:"level"`
+	PlistPath  string       `json:"plist_path"`
+	BinaryPath string       `json:"binary_path"`
+	Loaded     bool         `json:"loaded"`
+	PID        int          `json:"pid"`
+	LastExit   int          `json:"last_exit"`
+	IsZombie   bool         `json:"is_zombie"`
+	RunAtLoad  bool         `json:"run_at_load"`
+	KeepAlive  bool         `json:"keep_alive"`
+	Domain     string       `json:"domain"`
 }
 
 type plistData struct {
