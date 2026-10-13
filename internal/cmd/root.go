@@ -91,15 +91,6 @@ var (
 		},
 	}
 
-	doctorCmd = &cobra.Command{
-		Use:   "doctor",
-		Short: "Check system health and toolkit configuration",
-		Long:  "Diagnose potential system issues, check SIP status, disk permissions, terminal permissions, and verify toolkit dependencies.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
 	updateCmd = &cobra.Command{
 		Use:   "update",
 		Short: "Check for and install updates to Sift",
