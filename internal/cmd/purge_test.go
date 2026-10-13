@@ -16,6 +16,9 @@ func resetPurgeFlags() {
 	_ = purgeCmd.Flags().Set("min-age", "168h")
 	_ = purgeCmd.Flags().Set("ai", "false")
 	_ = purgeCmd.Flags().Set("models", "false")
+	_ = purgeCmd.Flags().Set("non-interactive", "false")
+	_ = purgeCmd.Flags().Set("quiet", "false")
+	_ = purgeCmd.Flags().Set("ci", "false")
 }
 
 func executePurgeWithArgs(args []string) (string, error) {
@@ -188,4 +191,3 @@ func TestPurgeCmd_AI_DryRun(t *testing.T) {
 		t.Errorf("expected Hugging Face provider in output, got: %s", out)
 	}
 }
-

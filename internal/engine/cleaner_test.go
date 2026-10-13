@@ -21,8 +21,8 @@ func setupMockHome(t *testing.T) string {
 }
 
 func TestCategoryMetadata(t *testing.T) {
-	if len(AllCategories) != 13 {
-		t.Fatalf("expected 13 cleanup categories, got %d", len(AllCategories))
+	if len(AllCategories) != 14 {
+		t.Fatalf("expected 14 cleanup categories, got %d", len(AllCategories))
 	}
 
 	for _, meta := range AllCategories {
@@ -324,8 +324,8 @@ func TestScanAll(t *testing.T) {
 		t.Fatalf("ScanAll failed: %v", err)
 	}
 
-	if len(categories) != 13 {
-		t.Fatalf("expected 13 categories from ScanAll, got %d", len(categories))
+	if len(categories) != 14 {
+		t.Fatalf("expected 14 categories from ScanAll, got %d", len(categories))
 	}
 
 	for i, c := range categories {

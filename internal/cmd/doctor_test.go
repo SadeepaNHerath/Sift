@@ -16,9 +16,10 @@ func TestDoctorCmd_FlagsRegistered(t *testing.T) {
 }
 
 func TestDoctorCmd_JSON(t *testing.T) {
+	resetDoctorFlags()
 	out, err := captureOutput(func() error {
 		_ = doctorCmd.Flags().Set("json", "true")
-		defer func() { _ = doctorCmd.Flags().Set("json", "false") }()
+		defer resetDoctorFlags()
 		return doctorCmd.RunE(doctorCmd, nil)
 	})
 	if err != nil {
@@ -36,8 +37,10 @@ func TestDoctorCmd_JSON(t *testing.T) {
 }
 
 func TestDoctorCmd_Text(t *testing.T) {
+	resetDoctorFlags()
 	out, err := captureOutput(func() error {
 		_ = doctorCmd.Flags().Set("json", "false")
+		defer resetDoctorFlags()
 		return doctorCmd.RunE(doctorCmd, nil)
 	})
 	if err != nil {

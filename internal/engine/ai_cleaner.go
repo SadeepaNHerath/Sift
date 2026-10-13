@@ -27,14 +27,14 @@ const (
 
 // AICacheTarget represents an AI model weight repository, compilation cache, or worktree.
 type AICacheTarget struct {
-	Name       string     `json:"name"`
-	Provider   AIProvider `json:"provider"`
-	Path       string     `json:"path"`
-	Size       int64      `json:"size"`
-	ItemCount  int        `json:"item_count"`
-	ModTime    time.Time  `json:"mod_time"`
-	IsWeights  bool       `json:"is_weights"` // true = model weights/blobs; false = rebuildable compiler/kernel cache
-	Description string    `json:"description"`
+	Name        string     `json:"name"`
+	Provider    AIProvider `json:"provider"`
+	Path        string     `json:"path"`
+	Size        int64      `json:"size"`
+	ItemCount   int        `json:"item_count"`
+	ModTime     time.Time  `json:"mod_time"`
+	IsWeights   bool       `json:"is_weights"` // true = model weights/blobs; false = rebuildable compiler/kernel cache
+	Description string     `json:"description"`
 }
 
 // ScanAICaches audits the filesystem for local AI models, weights, compiler caches, and AI agent worktrees.
