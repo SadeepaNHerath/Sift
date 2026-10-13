@@ -92,6 +92,7 @@ func init() {
 		purgeCmd,
 		dedupCmd,
 		startupCmd,
+		privacyCmd,
 		installerCmd,
 		optimizeCmd,
 		touchidCmd,
