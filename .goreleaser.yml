@@ -1,0 +1,60 @@
+version: 2
+
+project_name: Spacefold
+
+before:
+  hooks:
+    - go mod tidy
+    - go vet ./...
+
+builds:
+  - id: sf
+    main: ./cmd/sf
+    binary: sf
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - install.sh
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  github:
+    owner: SadeepaNHerath
+    name: Spacefold
+  prerelease: auto
+  header: |
+    ## Sift (sf) {{ .Tag }}
+    Terminal-first macOS maintenance, cleanup, and disk analysis toolkit.
+
+    ### Installation
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/install.sh | bash
+    ```

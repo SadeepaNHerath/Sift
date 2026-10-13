@@ -80,7 +80,6 @@ var (
 			printStubMessage(cmd.Name())
 		},
 	}
-
 )
 
 func init() {

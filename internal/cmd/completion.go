@@ -37,6 +37,9 @@ PowerShell:
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 	Args:                  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		_ = cmd.RunE(cmd, args)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		shell := ""
 		if len(args) > 0 {

@@ -15,20 +15,20 @@ import (
 
 // Constants identifying each of the 13 cleanup areas and external volume support.
 const (
-	CatUserEssentials   = "user-essentials"
-	CatAppCaches        = "app-caches"
-	CatBrowsers         = "browsers"
-	CatCloudOffice      = "cloud-office"
-	CatDeveloperTools   = "dev-tools"
-	CatHomebrew         = "homebrew"
-	CatVirtualization   = "virtualization"
-	CatAppSupport       = "app-support"
-	CatAppLeftovers     = "app-leftovers"
-	CatDeviceBackups    = "device-backups"
-	CatTimeMachine      = "time-machine"
-	CatSystemCaches     = "system-caches"
-	CatBrowserProfiles  = "browser-profiles"
-	CatExternalVolume   = "external-volume"
+	CatUserEssentials  = "user-essentials"
+	CatAppCaches       = "app-caches"
+	CatBrowsers        = "browsers"
+	CatCloudOffice     = "cloud-office"
+	CatDeveloperTools  = "dev-tools"
+	CatHomebrew        = "homebrew"
+	CatVirtualization  = "virtualization"
+	CatAppSupport      = "app-support"
+	CatAppLeftovers    = "app-leftovers"
+	CatDeviceBackups   = "device-backups"
+	CatTimeMachine     = "time-machine"
+	CatSystemCaches    = "system-caches"
+	CatBrowserProfiles = "browser-profiles"
+	CatExternalVolume  = "external-volume"
 )
 
 // CategoryMeta holds static metadata for a cleanup category.
