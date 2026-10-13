@@ -81,41 +81,6 @@ var (
 		},
 	}
 
-	purgeCmd = &cobra.Command{
-		Use:   "purge",
-		Short: "Deep purge developer dependencies and build artifacts",
-		Long:  "Deep purge development caches including Xcode DerivedData, Docker images, Homebrew caches, Gradle, Cargo, and package manager leftovers.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
-	installerCmd = &cobra.Command{
-		Use:   "installer",
-		Short: "Clean up downloaded installer packages and DMGs",
-		Long:  "Search for and remove orphaned installer packages (.pkg), disk images (.dmg), and archive files taking up space in Downloads and system caches.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
-	optimizeCmd = &cobra.Command{
-		Use:   "optimize",
-		Short: "Run macOS system and storage optimization tasks",
-		Long:  "Optimize storage, flush DNS cache, rebuild launch services database, purge inactive memory, and perform system tune-ups.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
-	touchidCmd = &cobra.Command{
-		Use:   "touchid",
-		Short: "Configure Touch ID authentication for sudo operations",
-		Long:  "Enable or verify Touch ID PAM module authentication for sudo in Terminal sessions for seamless privileged operations.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
 
 	historyCmd = &cobra.Command{
 		Use:   "history",
