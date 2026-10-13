@@ -21,16 +21,24 @@ func setupTestHome(t *testing.T) string {
 
 func captureOutput(f func() error) (string, error) {
 	oldStdout := os.Stdout
+	oldStderr := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	os.Stderr = w
+	rootCmd.SetOut(w)
+	rootCmd.SetErr(w)
 
 	err := f()
 
 	_ = w.Close()
 	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+	rootCmd.SetOut(oldStdout)
+	rootCmd.SetErr(oldStderr)
 
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
+	_ = r.Close()
 	return buf.String(), err
 }
 
