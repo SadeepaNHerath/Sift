@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -10,7 +11,12 @@ import (
 	"github.com/SadeepaNHerath/Spacefold/internal/engine"
 )
 
-var doctorJSON bool
+var (
+	doctorJSON     bool
+	doctorCI       bool
+	doctorExitCode bool
+	doctorFailOn   string
+)
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
@@ -28,6 +34,9 @@ and orphaned application leftovers with actionable repair suggestions.`,
 
 func init() {
 	doctorCmd.Flags().BoolVar(&doctorJSON, "json", false, "Output doctor diagnostics as JSON")
+	doctorCmd.Flags().BoolVar(&doctorCI, "ci", false, "Enable CI runner mode (outputs GitHub Actions annotations and enables exit codes)")
+	doctorCmd.Flags().BoolVar(&doctorExitCode, "exit-code", false, "Exit with code 1 if critical health issues are detected")
+	doctorCmd.Flags().StringVar(&doctorFailOn, "fail-on", "critical", "Threshold to trigger exit code 1 ('critical' or 'warning')")
 }
 
 func runDoctor(cmd *cobra.Command, args []string) error {
@@ -101,6 +110,27 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		}
 	}
 	fmt.Fprintln(out)
+
+	// CI Mode Output
+	if doctorCI {
+		for _, check := range report.Results {
+			if check.Severity == engine.SeverityCritical {
+				fmt.Fprintf(out, "::error title=%s::%s - %s\n", check.Name, check.Summary, check.Details)
+			} else if check.Severity == engine.SeverityWarning {
+				fmt.Fprintf(out, "::warning title=%s::%s - %s\n", check.Name, check.Summary, check.Details)
+			}
+		}
+	}
+
+	// Exit code evaluation
+	if doctorExitCode || doctorCI {
+		if strings.EqualFold(doctorFailOn, "warning") && (report.CritCount > 0 || report.WarnCount > 0) {
+			return fmt.Errorf("doctor check failed with %d critical, %d warnings (threshold: warning)", report.CritCount, report.WarnCount)
+		}
+		if report.CritCount > 0 {
+			return fmt.Errorf("doctor check failed: %d critical issues detected (threshold: critical)", report.CritCount)
+		}
+	}
 
 	return nil
 }

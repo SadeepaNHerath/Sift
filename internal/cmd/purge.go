@@ -19,9 +19,12 @@ var (
 	purgeYes    bool
 	purgePaths  []string
 	purgeAll    bool
-	purgeMinAge time.Duration
-	purgeAI     bool
-	purgeModels bool
+	purgeMinAge         time.Duration
+	purgeAI             bool
+	purgeModels         bool
+	purgeNonInteractive bool
+	purgeQuiet          bool
+	purgeCI             bool
 )
 
 var purgeCmd = &cobra.Command{
@@ -47,6 +50,9 @@ func init() {
 	purgeCmd.Flags().DurationVarP(&purgeMinAge, "min-age", "m", 7*24*time.Hour, "Minimum age threshold for purgeable artifacts (default 7d)")
 	purgeCmd.Flags().BoolVar(&purgeAI, "ai", false, "Purge local AI & LLM model caches, weights, and agent worktrees")
 	purgeCmd.Flags().BoolVar(&purgeModels, "models", false, "Alias for --ai")
+	purgeCmd.Flags().BoolVar(&purgeNonInteractive, "non-interactive", false, "Run non-interactively (alias for --yes)")
+	purgeCmd.Flags().BoolVarP(&purgeQuiet, "quiet", "q", false, "Suppress non-essential progress output")
+	purgeCmd.Flags().BoolVar(&purgeCI, "ci", false, "Run in automated CI pipeline mode (--non-interactive --all)")
 }
 
 func runPurge(cmd *cobra.Command, args []string) error {
@@ -59,6 +65,16 @@ func runPurge(cmd *cobra.Command, args []string) error {
 	flagPaths, _ := cmd.Flags().GetStringSlice("paths")
 	aiFlag, _ := cmd.Flags().GetBool("ai")
 	modelsFlag, _ := cmd.Flags().GetBool("models")
+	nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	ciFlag, _ := cmd.Flags().GetBool("ci")
+
+	if nonInteractive || ciFlag {
+		yes = true
+	}
+	if ciFlag {
+		all = true
+	}
 
 	logger, err := core.NewLogger()
 	if err != nil {
@@ -73,7 +89,9 @@ func runPurge(cmd *cobra.Command, args []string) error {
 	searchRoots = append(searchRoots, flagPaths...)
 	searchRoots = append(searchRoots, args...)
 
-	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("▸ Sift: Scanning for project build artifacts and dependencies..."))
+	if !quiet {
+		fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("▸ Sift: Scanning for project build artifacts and dependencies..."))
+	}
 
 	targets, err := engine.ScanPurgeTargets(searchRoots, minAge, all)
 	if err != nil {
@@ -238,6 +256,13 @@ func renderPurgeDryRun(cmd *cobra.Command, targets []engine.PurgeTarget, logger 
 // renderPurgeExecutionSummary prints the result of the purge operation.
 func renderPurgeExecutionSummary(cmd *cobra.Command, report *core.RemovalReport) {
 	out := cmd.OutOrStdout()
+
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	if quiet {
+		fmt.Fprintf(out, "✔ Purge completed: reclaimed %s across %d directories\n",
+			core.FormatBytes(report.TotalBytes), len(report.Removed))
+		return
+	}
 
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
 	sizeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
