@@ -63,15 +63,6 @@ var (
 		},
 	}
 
-	uninstallCmd = &cobra.Command{
-		Use:   "uninstall [app...]",
-		Short: "Thoroughly uninstall macOS applications and leftovers",
-		Long:  "Scan for installed applications, locate all associated support files, preferences, caches, and containers, and safely remove them.",
-		Run: func(cmd *cobra.Command, args []string) {
-			printStubMessage(cmd.Name())
-		},
-	}
-
 	analyzeCmd = &cobra.Command{
 		Use:   "analyze [path]",
 		Short: "Analyze disk space usage and large files",
