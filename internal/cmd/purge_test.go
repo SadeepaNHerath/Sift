@@ -14,6 +14,8 @@ func resetPurgeFlags() {
 	_ = purgeCmd.Flags().Set("all", "false")
 	_ = purgeCmd.Flags().Set("paths", "")
 	_ = purgeCmd.Flags().Set("min-age", "168h")
+	_ = purgeCmd.Flags().Set("ai", "false")
+	_ = purgeCmd.Flags().Set("models", "false")
 }
 
 func executePurgeWithArgs(args []string) (string, error) {
@@ -162,3 +164,28 @@ func TestPurgeCmd_AllFlagPurgesUnsafe(t *testing.T) {
 		t.Errorf("target directory should have been purged with --all")
 	}
 }
+
+func TestPurgeCmd_AI_DryRun(t *testing.T) {
+	tempHome := setupTestHome(t)
+	// Create mock Hugging Face hub
+	hfDir := filepath.Join(tempHome, ".cache", "huggingface", "hub", "models--test--model")
+	if err := os.MkdirAll(hfDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(hfDir, "weights.bin"), []byte("model weights"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := executePurgeWithArgs([]string{"--ai", "--dry-run"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(out, "AI/LLM DRY RUN PREVIEW") {
+		t.Errorf("expected AI dry run preview banner, got: %s", out)
+	}
+	if !strings.Contains(out, "Hugging Face") {
+		t.Errorf("expected Hugging Face provider in output, got: %s", out)
+	}
+}
+

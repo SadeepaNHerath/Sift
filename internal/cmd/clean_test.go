@@ -48,6 +48,8 @@ func resetCleanFlags() {
 	_ = cleanCmd.Flags().Set("all", "false")
 	_ = cleanCmd.Flags().Set("yes", "false")
 	_ = cleanCmd.Flags().Set("external", "")
+	_ = cleanCmd.Flags().Set("models", "false")
+	_ = cleanCmd.Flags().Set("ai", "false")
 }
 
 func executeCleanWithArgs(args []string) (string, error) {
@@ -59,7 +61,7 @@ func executeCleanWithArgs(args []string) (string, error) {
 }
 
 func TestCleanCmd_FlagsRegistered(t *testing.T) {
-	flags := []string{"dry-run", "all", "whitelist", "yes", "external"}
+	flags := []string{"dry-run", "all", "whitelist", "yes", "external", "models", "ai"}
 	for _, f := range flags {
 		flag := cleanCmd.Flags().Lookup(f)
 		if flag == nil {
