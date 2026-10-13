@@ -28,6 +28,7 @@ const (
 	CatTimeMachine     = "time-machine"
 	CatSystemCaches    = "system-caches"
 	CatBrowserProfiles = "browser-profiles"
+	CatAIModels        = "ai-models"
 	CatExternalVolume  = "external-volume"
 )
 
@@ -132,6 +133,13 @@ var AllCategories = []CategoryMeta{
 		Description:      "Headless Playwright and Puppeteer automation profiles",
 		Icon:             "🎭",
 		EnabledByDefault: true,
+	},
+	{
+		ID:               CatAIModels,
+		Name:             "AI & LLM Caches",
+		Description:      "Ollama blobs, Hugging Face hub, LM Studio, Jan, and PyTorch kernels",
+		Icon:             "🧠",
+		EnabledByDefault: false,
 	},
 }
 
@@ -261,6 +269,8 @@ func ScanCategory(catID string, whitelist *core.Whitelist) (*CleanCategory, erro
 		scanSystemCaches(cat, whitelist, seen)
 	case CatBrowserProfiles:
 		scanBrowserProfiles(cat, whitelist, seen)
+	case CatAIModels:
+		scanAICachesCategory(cat, whitelist, seen)
 	default:
 		return nil, fmt.Errorf("unsupported category ID: %q", catID)
 	}
@@ -962,6 +972,17 @@ func scanBrowserProfiles(cat *CleanCategory, wl *core.Whitelist, seen map[string
 		for _, m := range matches {
 			addCandidateItem(cat, m, t.desc, wl, seen)
 		}
+	}
+}
+
+// 14. AI & LLM Caches: Ollama blobs, Hugging Face hub, LM Studio, Jan, LocalAI, PyTorch kernels, AI worktrees
+func scanAICachesCategory(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
+	targets, err := ScanAICaches()
+	if err != nil {
+		return
+	}
+	for _, t := range targets {
+		addCandidateItem(cat, t.Path, fmt.Sprintf("%s (%s)", t.Name, t.Description), wl, seen)
 	}
 }
 

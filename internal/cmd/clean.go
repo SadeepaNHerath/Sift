@@ -21,6 +21,8 @@ var (
 	cleanYes       bool
 	cleanWhitelist bool
 	cleanExternal  string
+	cleanModels    bool
+	cleanAI        bool
 )
 
 func init() {
@@ -33,6 +35,8 @@ func init() {
 	cleanCmd.Flags().BoolVarP(&cleanYes, "yes", "y", false, "Execute cleanup without confirmation prompt")
 	cleanCmd.Flags().BoolVarP(&cleanWhitelist, "whitelist", "w", false, "Show active whitelist configuration")
 	cleanCmd.Flags().StringVarP(&cleanExternal, "external", "e", "", "Clean external volume junk files")
+	cleanCmd.Flags().BoolVar(&cleanModels, "models", false, "Clean local AI model weights and compiler caches")
+	cleanCmd.Flags().BoolVar(&cleanAI, "ai", false, "Alias for --models")
 }
 
 // CategoryCleanResult tracks cleanup results per category for the summary screen.
@@ -71,6 +75,12 @@ func runClean(cmd *cobra.Command, args []string) error {
 	}
 
 	// 4. Standard macOS Deep Cleaner
+	modelsFlag, _ := cmd.Flags().GetBool("models")
+	aiFlag, _ := cmd.Flags().GetBool("ai")
+	if modelsFlag || aiFlag {
+		args = append(args, engine.CatAIModels)
+	}
+
 	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("▸ Sift: Scanning system and application caches..."))
 
 	categories, err := engine.ScanAll(wl)
@@ -78,7 +88,7 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("scan failed: %w", err)
 	}
 
-	// Filter categories if specific args were passed (e.g. sf clean dev-tools browsers)
+	// Filter categories if specific args were passed (e.g. sf clean dev-tools browsers or --models)
 	if len(args) > 0 {
 		categories = filterCategoriesByArgs(categories, args)
 		if len(categories) == 0 {
