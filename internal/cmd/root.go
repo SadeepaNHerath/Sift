@@ -90,6 +90,7 @@ func init() {
 		analyzeCmd,
 		statusCmd,
 		purgeCmd,
+		dedupCmd,
 		installerCmd,
 		optimizeCmd,
 		touchidCmd,
