@@ -65,27 +65,3 @@ release:
     ```bash
     curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Sift/main/install.sh | bash
     ```
-
-homebrew_taps:
-  - name: sf
-    repository:
-      owner: SadeepaNHerath
-      name: homebrew-tap
-      token: "{{ if index .Env \"HOMEBREW_TAP_GITHUB_TOKEN\" }}{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}{{ else }}{{ .Env.GITHUB_TOKEN }}{{ end }}"
-    skip_upload: auto
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for Sift (sf) version {{ .Tag }}"
-    homepage: "https://github.com/SadeepaNHerath/Sift"
-    description: "Terminal-first macOS maintenance, app uninstaller, and disk analysis toolkit"
-    license: "MIT"
-    install: |
-      bin.install "sf"
-      generate_completions_from_executable(bin/"sf", "completion")
-    caveats: |
-      Sift (sf) requires non-root user execution. Never run with sudo sf.
-      Elevate privileges with Touch ID via:
-        sf touchid enable
-    test: |
-      assert_match "Sift (sf)", shell_output("#{bin}/sf --help")
