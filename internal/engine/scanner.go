@@ -111,6 +111,13 @@ func (s *DiskScanner) ScanDirProgressive(path string, onEntry func(FileEntry)) (
 	children := make([]FileEntry, 0, len(entries))
 	var totalSize int64
 
+	type dirTask struct {
+		path    string
+		name    string
+		modTime time.Time
+	}
+	var dirTasks []dirTask
+
 	for _, d := range entries {
 		name := d.Name()
 		childPath := filepath.Join(absPath, name)
@@ -139,34 +146,51 @@ func (s *DiskScanner) ScanDirProgressive(path string, onEntry func(FileEntry)) (
 			continue
 		}
 
-		// Directory item: calculate recursive stats concurrently
-		wg.Add(1)
-		go func(p string, n string, modTime time.Time) {
-			defer wg.Done()
-			s.acquire()
-			defer s.release()
-
-			dirSize, childCount := s.calculateDirStats(p)
-			fe := FileEntry{
-				Path:          p,
-				Name:          n,
-				Size:          dirSize,
-				IsDir:         true,
-				ModTime:       modTime,
-				ChildrenCount: childCount,
-			}
-
-			mu.Lock()
-			children = append(children, fe)
-			totalSize += dirSize
-			if onEntry != nil {
-				onEntry(fe)
-			}
-			mu.Unlock()
-		}(childPath, name, childInfo.ModTime())
+		dirTasks = append(dirTasks, dirTask{
+			path:    childPath,
+			name:    name,
+			modTime: childInfo.ModTime(),
+		})
 	}
 
-	wg.Wait()
+	if len(dirTasks) > 0 {
+		numWorkers := s.concurrency
+		if numWorkers > len(dirTasks) {
+			numWorkers = len(dirTasks)
+		}
+		taskChan := make(chan dirTask, len(dirTasks))
+		for _, t := range dirTasks {
+			taskChan <- t
+		}
+		close(taskChan)
+
+		for w := 0; w < numWorkers; w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for t := range taskChan {
+					dirSize, childCount := s.calculateDirStats(t.path)
+					fe := FileEntry{
+						Path:          t.path,
+						Name:          t.name,
+						Size:          dirSize,
+						IsDir:         true,
+						ModTime:       t.modTime,
+						ChildrenCount: childCount,
+					}
+
+					mu.Lock()
+					children = append(children, fe)
+					totalSize += dirSize
+					if onEntry != nil {
+						onEntry(fe)
+					}
+					mu.Unlock()
+				}
+			}()
+		}
+		wg.Wait()
+	}
 
 	// Sort children by size descending (largest first)
 	sort.Slice(children, func(i, j int) bool {
