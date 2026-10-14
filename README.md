@@ -10,6 +10,9 @@
 
 > **Terminal-first macOS maintenance & disk analysis toolkit**
 
+[![GitHub Release](https://img.shields.io/github/v/release/SadeepaNHerath/Sift?style=flat&logo=github&color=388bfd)](https://github.com/SadeepaNHerath/Sift/releases/latest)
+[![CI Status](https://github.com/SadeepaNHerath/Sift/actions/workflows/test.yml/badge.svg)](https://github.com/SadeepaNHerath/Sift/actions/workflows/test.yml)
+[![Homebrew Tap](https://img.shields.io/badge/Homebrew-SadeepaNHerath%2Ftap-orange?style=flat&logo=homebrew)](https://github.com/SadeepaNHerath/homebrew-tap)
 [![Go Version](https://img.shields.io/badge/Go-1.23%2B-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%28arm64%20%7C%20x86__64%29-000000?style=flat&logo=apple)](https://apple.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
