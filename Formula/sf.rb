@@ -1,7 +1,6 @@
 class Sf < Formula
   desc "Terminal-first macOS maintenance, app uninstaller, and disk analysis toolkit"
   homepage "https://github.com/SadeepaNHerath/Sift"
-  version "2.2.0"
   license "MIT"
   head "https://github.com/SadeepaNHerath/Sift.git", branch: "main"
 
@@ -10,11 +9,11 @@ class Sf < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/SadeepaNHerath/Sift/releases/download/v#{version}/Spacefold_#{version}_darwin_arm64.tar.gz"
+      url "https://github.com/SadeepaNHerath/Sift/releases/download/v2.2.0/Spacefold_2.2.0_darwin_arm64.tar.gz"
       sha256 "0000000000000000000000000000000000000000000000000000000000000001"
     end
     on_intel do
-      url "https://github.com/SadeepaNHerath/Sift/releases/download/v#{version}/Spacefold_#{version}_darwin_amd64.tar.gz"
+      url "https://github.com/SadeepaNHerath/Sift/releases/download/v2.2.0/Spacefold_2.2.0_darwin_amd64.tar.gz"
       sha256 "0000000000000000000000000000000000000000000000000000000000000002"
     end
   end
