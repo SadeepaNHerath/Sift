@@ -68,7 +68,11 @@ func runHistory(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("\n🗑️  Sift Deletions Audit Log"))
 		fmt.Fprintln(out, "────────────────────────────────────────────────────────────────────────")
 		for _, d := range deletions {
-			timeStr := lipgloss.NewStyle().Foreground(lipgloss.Color("242")).Render(d.Timestamp[:19])
+			t := d.Timestamp
+			if len(t) > 19 {
+				t = t[:19]
+			}
+			timeStr := lipgloss.NewStyle().Foreground(lipgloss.Color("242")).Render(t)
 			sizeStr := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42")).Render(fmt.Sprintf("%10s", core.FormatBytes(d.Bytes)))
 			modeStr := lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Render(fmt.Sprintf("[%s]", d.Mode))
 			pathStr := lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Render(d.Path)

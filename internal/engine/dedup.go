@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -157,7 +159,7 @@ func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error)
 	}
 
 	// -------------------------------------------------------------
-	// Phase 3: Full xxhash verification on collisions
+	// Phase 3: Full SHA-256 verification on collisions (collision-proof)
 	// -------------------------------------------------------------
 	fullBuckets := make(map[string][]DuplicateFile)
 
@@ -167,8 +169,7 @@ func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error)
 			if err != nil {
 				continue
 			}
-			hashKey := fmt.Sprintf("%016x", fullHash)
-			fullBuckets[hashKey] = append(fullBuckets[hashKey], file)
+			fullBuckets[fullHash] = append(fullBuckets[fullHash], file)
 		}
 	}
 
@@ -273,20 +274,20 @@ func computeSparseHash(path string, size int64) (uint64, error) {
 	return hasher.Sum64(), nil
 }
 
-// computeFullHash reads entire file into xxhash in 64KB blocks.
-func computeFullHash(path string) (uint64, error) {
+// computeFullHash reads entire file into SHA-256 in 64KB blocks.
+func computeFullHash(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer f.Close()
 
-	hasher := xxhash.New()
+	hasher := sha256.New()
 	buf := make([]byte, 64*1024)
 	if _, err := io.CopyBuffer(hasher, f, buf); err != nil {
-		return 0, err
+		return "", err
 	}
-	return hasher.Sum64(), nil
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // TrashDuplicates safely moves the specified duplicate file paths to Trash.
