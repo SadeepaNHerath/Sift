@@ -529,4 +529,3 @@ func isDarwinRootAlias(curr, target string) bool {
 		(c == "/tmp" && t == "/private/tmp") ||
 		(c == "/etc" && t == "/private/etc")
 }
-
