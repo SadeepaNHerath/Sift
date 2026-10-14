@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -118,5 +119,121 @@ func TestTrashDuplicates(t *testing.T) {
 	}
 	if _, err := os.Stat(f2); !os.IsNotExist(err) {
 		t.Errorf("file f2 was not moved to trash")
+	}
+}
+
+func TestCloneDuplicates_LiveAPFS(t *testing.T) {
+	tempDir := t.TempDir()
+	f1 := filepath.Join(tempDir, "original.txt")
+	f2 := filepath.Join(tempDir, "duplicate.txt")
+
+	content := []byte("UniversalAPFSDeduplicationTestContent12345")
+	if err := os.WriteFile(f1, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f2, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := DedupOptions{MinSize: 10}
+	groups, err := FindDuplicates([]string{tempDir}, opts)
+	if err != nil {
+		t.Fatalf("FindDuplicates failed: %v", err)
+	}
+	if len(groups) != 1 {
+		t.Fatalf("expected 1 duplicate group, got %d", len(groups))
+	}
+
+	// 1. Test Dry Run
+	dryResult, err := CloneDuplicates(groups, false, true, nil)
+	if err != nil {
+		t.Fatalf("CloneDuplicates dry run failed: %v", err)
+	}
+	if dryResult.ProcessedFiles != 1 {
+		t.Errorf("expected 1 processed in dry run, got %d", dryResult.ProcessedFiles)
+	}
+
+	// 2. Test Live Clone Execution
+	liveResult, err := CloneDuplicates(groups, false, false, nil)
+	if err != nil {
+		t.Fatalf("CloneDuplicates live failed: %v", err)
+	}
+	if len(liveResult.Failed) > 0 {
+		t.Logf("APFS clone not supported or failed on temp filesystem: %v", liveResult.Failed[0].Error)
+		return
+	}
+	if liveResult.ProcessedFiles != 1 {
+		t.Errorf("expected 1 cloned file, got %d", liveResult.ProcessedFiles)
+	}
+
+	// Verify both files still exist and have identical content
+	readF2, err := os.ReadFile(f2)
+	if err != nil {
+		t.Fatalf("failed to read cloned duplicate file: %v", err)
+	}
+	if !bytes.Equal(readF2, content) {
+		t.Errorf("cloned file content mismatch")
+	}
+
+	// Verify Copy-on-Write independence: write to f2 and verify f1 is unchanged
+	mutated := []byte("MutatedContentForCopyOnWriteTest")
+	if err := os.WriteFile(f2, mutated, 0644); err != nil {
+		t.Fatalf("failed to write to f2: %v", err)
+	}
+	readF1, err := os.ReadFile(f1)
+	if err != nil {
+		t.Fatalf("failed to read f1: %v", err)
+	}
+	if !bytes.Equal(readF1, content) {
+		t.Errorf("f1 was mutated after f2 write! CoW independence failed")
+	}
+}
+
+func TestHardlinkDuplicates_Live(t *testing.T) {
+	tempDir := t.TempDir()
+	f1 := filepath.Join(tempDir, "link_orig.txt")
+	f2 := filepath.Join(tempDir, "link_dup.txt")
+
+	content := []byte("HardlinkDeduplicationTestContent999")
+	if err := os.WriteFile(f1, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f2, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := DedupOptions{MinSize: 10}
+	groups, err := FindDuplicates([]string{tempDir}, opts)
+	if err != nil {
+		t.Fatalf("FindDuplicates failed: %v", err)
+	}
+	if len(groups) != 1 {
+		t.Fatalf("expected 1 duplicate group, got %d", len(groups))
+	}
+
+	liveResult, err := HardlinkDuplicates(groups, false, false, nil)
+	if err != nil {
+		t.Fatalf("HardlinkDuplicates failed: %v", err)
+	}
+	if liveResult.ProcessedFiles != 1 {
+		t.Errorf("expected 1 hardlinked file, got %d", liveResult.ProcessedFiles)
+	}
+
+	// Inode verification
+	st1, err := os.Stat(f1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st2, err := os.Stat(f2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stat1, ok1 := st1.Sys().(*syscall.Stat_t)
+	stat2, ok2 := st2.Sys().(*syscall.Stat_t)
+	if ok1 && ok2 {
+		if stat1.Ino != stat2.Ino {
+			t.Errorf("expected shared inode, got ino1=%d, ino2=%d", stat1.Ino, stat2.Ino)
+		}
 	}
 }

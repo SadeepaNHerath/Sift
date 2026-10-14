@@ -8,6 +8,25 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    name: Lint & Code Complexity
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61
+          args: --timeout=5m
+
   test:
     name: Go Test & Build
     runs-on: macos-latest

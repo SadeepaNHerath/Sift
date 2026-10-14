@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"golang.org/x/sys/unix"
 
 	"github.com/SadeepaNHerath/Sift/internal/core"
 )
@@ -317,4 +318,166 @@ func TrashDuplicates(paths []string, dryRun bool, logger *core.Logger) (*core.Re
 		}
 	}
 	return report, nil
+}
+
+// DedupAction specifies how duplicate files are resolved.
+type DedupAction string
+
+const (
+	ActionTrash    DedupAction = "trash"
+	ActionClone    DedupAction = "clone"
+	ActionHardlink DedupAction = "hardlink"
+)
+
+// DedupActionResult reports the outcome of a deduplication operation (clone, hardlink, or trash).
+type DedupActionResult struct {
+	Action         DedupAction      `json:"action"`
+	ProcessedFiles int              `json:"processed_files"`
+	ReclaimedBytes int64            `json:"reclaimed_bytes"`
+	Successful     []DedupItem      `json:"successful"`
+	Failed         []DedupItemError `json:"failed"`
+}
+
+// DedupItem tracks an individual duplicate file that was cloned or linked.
+type DedupItem struct {
+	SourcePath string `json:"source_path"`
+	TargetPath string `json:"target_path"`
+	Size       int64  `json:"size"`
+}
+
+// DedupItemError tracks an error encountered while cloning or linking a duplicate file.
+type DedupItemError struct {
+	Path  string `json:"path"`
+	Error error  `json:"error"`
+}
+
+// CloneFileAtomic replaces dst with an APFS Copy-on-Write clone of src.
+// It creates a temporary clone in dst's parent directory and atomically renames it over dst.
+func CloneFileAtomic(src, dst string) error {
+	dir := filepath.Dir(dst)
+	tmp := filepath.Join(dir, fmt.Sprintf(".sf_clone_%d_%s", time.Now().UnixNano(), filepath.Base(dst)))
+
+	if err := unix.Clonefile(src, tmp, 0); err != nil {
+		return fmt.Errorf("apfs clonefile error: %w", err)
+	}
+
+	if err := os.Rename(tmp, dst); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("atomic rename error: %w", err)
+	}
+	return nil
+}
+
+// HardlinkFileAtomic replaces dst with a filesystem hardlink to src.
+// It creates a temporary hardlink in dst's parent directory and atomically renames it over dst.
+func HardlinkFileAtomic(src, dst string) error {
+	dir := filepath.Dir(dst)
+	tmp := filepath.Join(dir, fmt.Sprintf(".sf_link_%d_%s", time.Now().UnixNano(), filepath.Base(dst)))
+
+	if err := os.Link(src, tmp); err != nil {
+		return fmt.Errorf("hardlink error: %w", err)
+	}
+
+	if err := os.Rename(tmp, dst); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("atomic rename error: %w", err)
+	}
+	return nil
+}
+
+// CloneDuplicates replaces duplicate files in each group with an APFS CoW clone of the preserved file.
+func CloneDuplicates(groups []DuplicateGroup, keepNewest bool, dryRun bool, logger *core.Logger) (*DedupActionResult, error) {
+	return resolveWithLinkOrClone(groups, ActionClone, keepNewest, dryRun, logger)
+}
+
+// HardlinkDuplicates replaces duplicate files in each group with a filesystem hardlink to the preserved file.
+func HardlinkDuplicates(groups []DuplicateGroup, keepNewest bool, dryRun bool, logger *core.Logger) (*DedupActionResult, error) {
+	return resolveWithLinkOrClone(groups, ActionHardlink, keepNewest, dryRun, logger)
+}
+
+func resolveWithLinkOrClone(groups []DuplicateGroup, action DedupAction, keepNewest bool, dryRun bool, logger *core.Logger) (*DedupActionResult, error) {
+	result := &DedupActionResult{Action: action}
+
+	for _, g := range groups {
+		if len(g.Files) < 2 {
+			continue
+		}
+
+		// Determine the master file to preserve
+		masterIdx := 0
+		if keepNewest {
+			masterIdx = len(g.Files) - 1
+		}
+		master := g.Files[masterIdx]
+
+		for i, f := range g.Files {
+			if i == masterIdx {
+				continue
+			}
+
+			// If files are already the same inode on the same device, they are already shared
+			if master.Dev == f.Dev && master.Inode == f.Inode {
+				continue
+			}
+
+			// Check device boundary for APFS clone
+			if action == ActionClone && master.Dev != f.Dev {
+				result.Failed = append(result.Failed, DedupItemError{
+					Path:  f.Path,
+					Error: fmt.Errorf("cannot clone across different filesystem volumes (master: %d, target: %d)", master.Dev, f.Dev),
+				})
+				continue
+			}
+
+			if dryRun {
+				result.Successful = append(result.Successful, DedupItem{
+					SourcePath: master.Path,
+					TargetPath: f.Path,
+					Size:       f.Size,
+				})
+				result.ProcessedFiles++
+				result.ReclaimedBytes += f.Size
+				continue
+			}
+
+			var err error
+			if action == ActionClone {
+				err = CloneFileAtomic(master.Path, f.Path)
+			} else {
+				err = HardlinkFileAtomic(master.Path, f.Path)
+			}
+
+			if err != nil {
+				result.Failed = append(result.Failed, DedupItemError{
+					Path:  f.Path,
+					Error: err,
+				})
+			} else {
+				result.Successful = append(result.Successful, DedupItem{
+					SourcePath: master.Path,
+					TargetPath: f.Path,
+					Size:       f.Size,
+				})
+				result.ProcessedFiles++
+				result.ReclaimedBytes += f.Size
+
+				if logger != nil {
+					logger.LogOperation("dedup", string(action), "success",
+						fmt.Sprintf("Replaced %s with %s of %s", f.Path, action, master.Path))
+				}
+			}
+		}
+	}
+
+	if logger != nil {
+		modeStr := "execute"
+		if dryRun {
+			modeStr = "dry-run"
+		}
+		logger.LogOperation("dedup", fmt.Sprintf("%s-%s", action, modeStr), "success",
+			fmt.Sprintf("Processed %d files, reclaimed %s via %s",
+				result.ProcessedFiles, core.FormatBytes(result.ReclaimedBytes), action))
+	}
+
+	return result, nil
 }

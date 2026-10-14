@@ -1,0 +1,35 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - gocyclo
+    - cyclop
+    - gocognit
+    - errcheck
+    - ineffassign
+    - staticcheck
+    - unconvert
+    - misspell
+    - gosec
+
+linters-settings:
+  gocyclo:
+    min-complexity: 30
+  cyclop:
+    max-complexity: 30
+  gocognit:
+    min-complexity: 35
+  errcheck:
+    check-type-assertions: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - cyclop
+        - gocognit
+        - errcheck
+        - gosec

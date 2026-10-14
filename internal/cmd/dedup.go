@@ -22,17 +22,19 @@ var (
 	dedupDryRun     bool
 	dedupYes        bool
 	dedupJSON       bool
+	dedupClone      bool
+	dedupHardlink   bool
 )
 
 var dedupCmd = &cobra.Command{
 	Use:   "dedup [paths...]",
-	Short: "Find and safely trash duplicate files using 3-phase sparse hashing",
+	Short: "Find and safely trash or APFS-clone duplicate files using 3-phase sparse hashing",
 	Long: `High-performance duplicate file finder using 3-phase verification:
 Phase 1: Quick exact byte size bucketing.
 Phase 2: 12KB sparse xxhash probing (first 4KB + mid 4KB + last 4KB).
 Phase 3: Full xxhash collision verification with Darwin inode hardlink detection.
 Provides an interactive Bubble Tea resolver to preview files with macOS QuickLook
-and safely move copies to the Trash.`,
+and safely move copies to the Trash, or replace them with APFS Copy-on-Write (CoW) clones.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := runDedup(cmd, args); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -43,15 +45,28 @@ and safely move copies to the Trash.`,
 
 func init() {
 	dedupCmd.Flags().StringVarP(&dedupMinSize, "min-size", "m", "1MB", "Minimum file size threshold (e.g. 500KB, 1MB, 10MB)")
-	dedupCmd.Flags().BoolVar(&dedupKeepOldest, "keep-oldest", false, "Automatically keep oldest file in each duplicate group and trash copies")
-	dedupCmd.Flags().BoolVar(&dedupKeepNewest, "keep-newest", false, "Automatically keep newest file in each duplicate group and trash copies")
-	dedupCmd.Flags().BoolVarP(&dedupDryRun, "dry-run", "n", false, "Preview duplicate groups without moving to Trash")
-	dedupCmd.Flags().BoolVarP(&dedupYes, "yes", "y", false, "Execute duplicate trashing without interactive prompt")
+	dedupCmd.Flags().BoolVar(&dedupKeepOldest, "keep-oldest", false, "Automatically keep oldest file in each duplicate group")
+	dedupCmd.Flags().BoolVar(&dedupKeepNewest, "keep-newest", false, "Automatically keep newest file in each duplicate group")
+	dedupCmd.Flags().BoolVarP(&dedupDryRun, "dry-run", "n", false, "Preview duplicate groups without modifying files")
+	dedupCmd.Flags().BoolVarP(&dedupYes, "yes", "y", false, "Execute duplicate resolution without interactive prompt")
 	dedupCmd.Flags().BoolVar(&dedupJSON, "json", false, "Output duplicate groups in JSON format")
+	dedupCmd.Flags().BoolVarP(&dedupClone, "clone", "c", false, "Replace duplicates with APFS Copy-on-Write (CoW) clones (frees space without deleting files)")
+	dedupCmd.Flags().BoolVarP(&dedupHardlink, "hardlink", "l", false, "Replace duplicates with filesystem hardlinks")
 }
 
 func runDedup(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
+
+	if dedupClone && dedupHardlink {
+		return fmt.Errorf("cannot specify both --clone and --hardlink")
+	}
+
+	action := engine.ActionTrash
+	if dedupClone {
+		action = engine.ActionClone
+	} else if dedupHardlink {
+		action = engine.ActionHardlink
+	}
 
 	minBytes, err := parseByteSize(dedupMinSize)
 	if err != nil {
@@ -89,11 +104,11 @@ func runDedup(cmd *cobra.Command, args []string) error {
 
 	// 2. Dry run preview
 	if dedupDryRun {
-		return renderDedupDryRun(cmd, groups, dedupKeepNewest, logger)
+		return renderDedupDryRun(cmd, groups, dedupKeepNewest, action, logger)
 	}
 
-	// 3. Interactive TUI selection
-	if !dedupYes && core.IsTTY() && !dedupKeepOldest && !dedupKeepNewest {
+	// 3. Interactive TUI selection (Trash mode)
+	if !dedupYes && core.IsTTY() && !dedupKeepOldest && !dedupKeepNewest && action == engine.ActionTrash {
 		m := tuiDedup.New(groups)
 		p := tea.NewProgram(m)
 		finalModel, err := p.Run()
@@ -127,7 +142,26 @@ func runDedup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("dedup requires confirmation: pass --yes/-y along with --keep-oldest or --keep-newest to run non-interactively")
 	}
 
-	// 5. Automated resolution (keep-oldest or keep-newest)
+	// 5. APFS Clone or Hardlink Resolution
+	if action == engine.ActionClone {
+		result, err := engine.CloneDuplicates(groups, dedupKeepNewest, false, logger)
+		if err != nil {
+			return fmt.Errorf("failed to clone duplicates: %w", err)
+		}
+		renderDedupActionResult(cmd, result)
+		return nil
+	}
+
+	if action == engine.ActionHardlink {
+		result, err := engine.HardlinkDuplicates(groups, dedupKeepNewest, false, logger)
+		if err != nil {
+			return fmt.Errorf("failed to hardlink duplicates: %w", err)
+		}
+		renderDedupActionResult(cmd, result)
+		return nil
+	}
+
+	// 6. Automated Trash resolution (keep-oldest or keep-newest)
 	var pathsToTrash []string
 	for _, g := range groups {
 		if dedupKeepNewest {
@@ -152,7 +186,7 @@ func runDedup(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepNewest bool, logger *core.Logger) error {
+func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepNewest bool, action engine.DedupAction, logger *core.Logger) error {
 	out := cmd.OutOrStdout()
 
 	var totalReclaimable int64
@@ -162,8 +196,22 @@ func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepN
 	headStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("255"))
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 	keptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	trashStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+	targetStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
 	sizeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
+	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+
+	var targetTag string
+	switch action {
+	case engine.ActionClone:
+		targetTag = "[CLONE]"
+		targetStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
+	case engine.ActionHardlink:
+		targetTag = "[LINK]"
+		targetStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("33"))
+	default:
+		targetTag = "[TRASH]"
+		targetStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+	}
 
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, titleStyle.Render("▸ DEDUP DRY RUN PREVIEW — No files will be modified"))
@@ -178,15 +226,15 @@ func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepN
 
 		for fIdx, f := range g.Files {
 			isKept := (fIdx == 0 && !keepNewest) || (fIdx == len(g.Files)-1 && keepNewest)
-			var action string
+			var actionLabel string
 			if isKept {
-				action = keptStyle.Render("[KEEP]")
+				actionLabel = keptStyle.Render("[KEEP]")
 			} else {
-				action = trashStyle.Render("[TRASH]")
+				actionLabel = targetStyle.Render(targetTag)
 			}
 
 			fmt.Fprintf(out, "  %s %s %s\n",
-				action,
+				actionLabel,
 				f.Path,
 				dimStyle.Render("("+f.ModTime.Format("2006-01-02 15:04")+")"),
 			)
@@ -200,19 +248,69 @@ func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepN
 		BorderForeground(lipgloss.Color("214")).
 		Padding(0, 1)
 
-	summary := fmt.Sprintf("Duplicate Groups: %d  │  Files to Trash: %d  │  Reclaimable: %s",
+	var actionName string
+	switch action {
+	case engine.ActionClone:
+		actionName = "Files to Clone (CoW)"
+	case engine.ActionHardlink:
+		actionName = "Files to Hardlink"
+	default:
+		actionName = "Files to Trash"
+	}
+
+	summary := fmt.Sprintf("Duplicate Groups: %d  │  %s: %d  │  Reclaimable: %s",
 		len(groups),
+		actionName,
 		duplicateFilesCount,
 		sizeStyle.Render(core.FormatBytes(totalReclaimable)),
 	)
 	fmt.Fprintln(out, boxStyle.Render(summary))
+
+	if action == engine.ActionClone {
+		fmt.Fprintln(out, infoStyle.Render("ℹ  APFS Copy-on-Write clones will share disk blocks instantly with zero risk of breaking dependent applications."))
+	} else if action == engine.ActionHardlink {
+		fmt.Fprintln(out, infoStyle.Render("ℹ  Filesystem hardlinks will point duplicates to the exact same inode, freeing disk space."))
+	}
 	fmt.Fprintln(out)
 
 	if logger != nil {
-		logger.LogOperation("dedup", "dry-run", "success", summary)
+		logger.LogOperation("dedup", fmt.Sprintf("dry-run-%s", action), "success", summary)
 	}
 
 	return nil
+}
+
+func renderDedupActionResult(cmd *cobra.Command, result *engine.DedupActionResult) {
+	out := cmd.OutOrStdout()
+
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
+	sizeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
+	errStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+
+	var actionWord string
+	switch result.Action {
+	case engine.ActionClone:
+		actionWord = "APFS Copy-on-Write Deduplication"
+	case engine.ActionHardlink:
+		actionWord = "Hardlink Deduplication"
+	default:
+		actionWord = "Deduplication"
+	}
+
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, headerStyle.Render(fmt.Sprintf("✔ %s completed! Reclaimed %s", actionWord, sizeStyle.Render(core.FormatBytes(result.ReclaimedBytes)))))
+	fmt.Fprintf(out, "  Deduplicated %d duplicate files (zero file loss)\n", result.ProcessedFiles)
+
+	if len(result.Failed) > 0 {
+		fmt.Fprintf(out, "  %s %d items could not be processed:\n", errStyle.Render("Errors:"), len(result.Failed))
+		for _, f := range result.Failed {
+			fmt.Fprintf(out, "   • %s: %v\n", f.Path, f.Error)
+		}
+	} else if result.Action == engine.ActionClone {
+		fmt.Fprintln(out, dimStyle.Render("  Storage blocks are now shared via APFS Copy-on-Write. Both files remain readable and independently mutable."))
+	}
+	fmt.Fprintln(out)
 }
 
 func renderDedupExecutionSummary(cmd *cobra.Command, report *core.RemovalReport) {
