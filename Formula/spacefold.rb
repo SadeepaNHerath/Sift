@@ -2,7 +2,7 @@ class Spacefold < Formula
   desc "Terminal-first macOS maintenance, app uninstaller, and disk analysis toolkit"
   homepage "https://github.com/SadeepaNHerath/Sift"
   url "https://github.com/SadeepaNHerath/Sift/archive/refs/tags/v2.2.0.tar.gz"
-  sha256 "f2eaa03e73a4e69cf12165c093029aec2200ab37bb328221dc57418fde001f4c"
+  sha256 "be78604c2b63da18a412dd67ec9ae018a1aafb28dc4a0d172e53992598402eca"
   license "MIT"
   head "https://github.com/SadeepaNHerath/Sift.git", branch: "main"
 
