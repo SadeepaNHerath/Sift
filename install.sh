@@ -4,7 +4,7 @@
 # Terminal-first macOS maintenance, cleanup, and disk analysis toolkit
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Sift/main/install.sh | bash
 #
 # Options (via environment):
 #   SF_INSTALL_DIR="/usr/local/bin"   # Custom installation target directory
@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-REPO="SadeepaNHerath/Spacefold"
+REPO="SadeepaNHerath/Sift"
 BINARY_NAME="sf"
 
 # Colors for terminal styling
