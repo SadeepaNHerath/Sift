@@ -18,6 +18,8 @@ func resetDedupFlags() {
 	_ = dedupCmd.Flags().Set("dry-run", "false")
 	_ = dedupCmd.Flags().Set("yes", "false")
 	_ = dedupCmd.Flags().Set("json", "false")
+	_ = dedupCmd.Flags().Set("clone", "false")
+	_ = dedupCmd.Flags().Set("hardlink", "false")
 }
 
 func executeDedupWithArgs(args []string) (string, error) {
@@ -29,7 +31,7 @@ func executeDedupWithArgs(args []string) (string, error) {
 }
 
 func TestDedupCmd_FlagsRegistered(t *testing.T) {
-	flags := []string{"min-size", "keep-oldest", "keep-newest", "dry-run", "yes", "json"}
+	flags := []string{"min-size", "keep-oldest", "keep-newest", "dry-run", "yes", "json", "clone", "hardlink"}
 	for _, f := range flags {
 		flag := dedupCmd.Flags().Lookup(f)
 		if flag == nil {
@@ -162,5 +164,68 @@ func TestDedupCmd_ExecuteWithYesKeepOldest(t *testing.T) {
 	// Verify new file was moved to Trash
 	if _, err := os.Stat(fNew); !os.IsNotExist(err) {
 		t.Errorf("new duplicate file was not removed: %v", err)
+	}
+}
+
+func TestDedupCmd_CloneDryRun(t *testing.T) {
+	tempHome := setupTestHome(t)
+	dir := filepath.Join(tempHome, "Documents")
+	_ = os.MkdirAll(dir, 0755)
+
+	data := bytes.Repeat([]byte("CloneDryRunTestingData123"), 100)
+	f1 := filepath.Join(dir, "clone1.txt")
+	f2 := filepath.Join(dir, "clone2.txt")
+	_ = os.WriteFile(f1, data, 0644)
+	_ = os.WriteFile(f2, data, 0644)
+
+	out, err := executeDedupWithArgs([]string{"--clone", "--dry-run", "--min-size", "10B", dir})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(out, "[CLONE]") {
+		t.Errorf("expected [CLONE] label in dry run output, got: %s", out)
+	}
+	if !strings.Contains(out, "APFS Copy-on-Write") {
+		t.Errorf("expected APFS explanatory message, got: %s", out)
+	}
+}
+
+func TestDedupCmd_MutualExclusion(t *testing.T) {
+	_, err := executeDedupWithArgs([]string{"--clone", "--hardlink", "."})
+	if err == nil {
+		t.Fatal("expected error when both --clone and --hardlink are passed, got nil")
+	}
+	if !strings.Contains(err.Error(), "cannot specify both --clone and --hardlink") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestDedupCmd_HardlinkExecute(t *testing.T) {
+	tempHome := setupTestHome(t)
+	dir := filepath.Join(tempHome, "Links")
+	_ = os.MkdirAll(dir, 0755)
+
+	data := bytes.Repeat([]byte("HardlinkExecutionBytes!"), 200)
+	f1 := filepath.Join(dir, "link1.bin")
+	f2 := filepath.Join(dir, "link2.bin")
+	_ = os.WriteFile(f1, data, 0644)
+	_ = os.WriteFile(f2, data, 0644)
+
+	out, err := executeDedupWithArgs([]string{"--hardlink", "--yes", "--keep-oldest", "--min-size", "10B", dir})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(out, "Hardlink Deduplication completed") {
+		t.Errorf("expected hardlink completion message, got: %s", out)
+	}
+
+	// Verify both files still exist (not deleted!)
+	if _, err := os.Stat(f1); err != nil {
+		t.Errorf("f1 was erroneously removed: %v", err)
+	}
+	if _, err := os.Stat(f2); err != nil {
+		t.Errorf("f2 was erroneously removed: %v", err)
 	}
 }

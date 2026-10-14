@@ -19,6 +19,12 @@
 
 ---
 
+<p align="center">
+  <img src="assets/demo.svg" alt="Sift Animated Terminal Demo" width="850" />
+</p>
+
+---
+
 **Sift (`sf`)** is a blazing-fast, terminal-first macOS maintenance, app uninstallation, and disk analysis toolkit. Built in Go, it replaces bloated commercial cleaners, background telemetry daemons, and expensive subscription utilities with a single, standalone binary that puts full control back into your hands.
 
 ---
@@ -153,10 +159,13 @@ The interactive menu displays live macOS metrics (hostname, OS build, architectu
 | :--- | :---: | :--- |
 | [`sf clean`](#sf-clean) | `1` | Scan and clean system, user, and application caches |
 | [`sf uninstall`](#sf-uninstall) | `2` | Locate applications and eliminate all associated leftovers |
-| [`sf optimize`](#sf-optimize) | `3` | Flush DNS, purge RAM caches, and optimize LaunchServices |
+| [`sf dedup`](#sf-dedup) | `3` | 3-phase duplicate finder with APFS Copy-on-Write cloning & hardlinking |
 | [`sf analyze`](#sf-analyze) | `4` | High-speed multi-threaded disk usage and large file analyzer |
 | [`sf status`](#sf-status) | `5` | Comprehensive overview of system storage, health, and security |
-| [`sf purge`](#sf-purge) | `6` | Deep purge developer artifacts (Xcode, Docker, Homebrew, Cargo) |
+| [`sf purge`](#sf-purge) | `6` | Deep purge developer artifacts (Xcode, Docker, Homebrew, Cargo, AI models) |
+| [`sf startup`](#sf-startup) | — | Manage launch agents, daemons, and orphaned background services |
+| [`sf privacy`](#sf-privacy) | — | Wipe forensic trails, clipboard history, and recent items |
+| [`sf optimize`](#sf-optimize) | — | Flush DNS, purge RAM caches, and optimize LaunchServices |
 | [`sf installer`](#sf-installer) | — | Find and remove stale `.dmg`, `.pkg`, and installer archives |
 | [`sf touchid`](#sf-touchid) | — | Configure Touch ID PAM authentication for terminal operations |
 | [`sf doctor`](#sf-doctor) | — | Diagnose permissions, SIP status, disk access, and environment |
@@ -183,6 +192,17 @@ Comprehensively uninstalls macOS `.app` bundles along with all sandboxed Contain
 sf uninstall "Slack"
 sf uninstall /Applications/Figma.app --dry-run
 sf uninstall "Zoom" --trash # Move leftovers to Trash instead of permanent purge
+```
+
+#### `sf dedup [paths...]`
+High-speed 3-phase duplicate finder (exact byte bucketing → 12KB sparse hash → full SHA-256). Supports **APFS Copy-on-Write cloning** (`clonefile(2)`) to reclaim storage blocks immediately with zero risk of breaking dependent apps.
+```bash
+sf dedup ~/Downloads                   # Interactive Bubble Tea resolver with QuickLook
+sf dedup ~/Documents --dry-run         # Preview duplicates without modifying files
+sf dedup ~/Downloads --clone --yes     # Replace duplicates with APFS CoW clones (zero file loss!)
+sf dedup ~/Projects --hardlink --yes   # Replace duplicates with filesystem hardlinks
+sf dedup ~/Movies --keep-oldest -y     # Keep oldest file in each set and trash copies
+sf dedup --min-size 10MB               # Scan files >= 10MB only
 ```
 
 #### `sf optimize`
