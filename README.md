@@ -77,7 +77,7 @@ brew install sf
 ### Method 2: One-Line Shell Installer
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Sift/main/install.sh | bash
 ```
 
 ### Method 3: From Source
@@ -85,8 +85,8 @@ curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/insta
 Requires **Go 1.23+** and standard macOS command-line tools:
 
 ```bash
-git clone https://github.com/SadeepaNHerath/Spacefold.git
-cd Spacefold
+git clone https://github.com/SadeepaNHerath/Sift.git
+cd Sift
 make all
 make install
 ```
