@@ -25,3 +25,7 @@ func TestUpdateCmd_Run(t *testing.T) {
 	}
 	_ = out
 }
+
+func TestIsHomebrewInstallation(t *testing.T) {
+	_ = isHomebrewInstallation()
+}

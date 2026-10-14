@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -52,7 +54,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("▸ Sift: Checking GitHub releases for updates..."))
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/SadeepaNHerath/Spacefold/releases/latest", nil)
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/SadeepaNHerath/Sift/releases/latest", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create update request: %w", err)
 	}
@@ -94,11 +96,35 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if isHomebrewInstallation() {
+		fmt.Fprintln(out, "To upgrade to the latest release via Homebrew, run:")
+		fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51")).Render(
+			"  brew update && brew upgrade sf",
+		))
+		fmt.Fprintln(out)
+		return nil
+	}
+
 	fmt.Fprintln(out, "To upgrade to the latest release, run:")
 	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51")).Render(
-		"  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/install.sh | bash",
+		"  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Sift/main/install.sh | bash",
 	))
 	fmt.Fprintln(out)
 
 	return nil
+}
+
+// isHomebrewInstallation checks if the running binary was installed via Homebrew.
+func isHomebrewInstallation() bool {
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	realPath, err := filepath.EvalSymlinks(exe)
+	if err != nil {
+		realPath = exe
+	}
+	return strings.Contains(realPath, "/Cellar/") ||
+		strings.Contains(realPath, "/opt/homebrew/") ||
+		strings.Contains(realPath, "/usr/local/Cellar/")
 }
