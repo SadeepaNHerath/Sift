@@ -1,0 +1,67 @@
+name: Bug Report
+description: File a bug report to help improve Sift (sf)
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue! Please ensure you are running the latest version of `sf` before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: Sift Version
+      description: What version of Sift are you using? (Run `sf --version`)
+      placeholder: "sf version 2.2.0"
+    validations:
+      required: true
+  - type: input
+    id: macos_version
+    attributes:
+      label: macOS Version & Architecture
+      description: What macOS version and architecture are you running? (e.g. macOS 15.0 Sequoia arm64)
+      placeholder: "macOS 15.1 (Apple Silicon arm64)"
+    validations:
+      required: true
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Installation Method
+      options:
+        - Homebrew Tap (brew install SadeepaNHerath/tap/sf)
+        - Shell Installer (curl install.sh)
+        - Built from source (make install)
+        - Direct binary download from GitHub Releases
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem Description
+      description: A clear and concise description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Exact steps or commands used to reproduce the issue.
+      placeholder: |
+        1. Run `sf clean ...`
+        2. Select category ...
+        3. See error ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Diagnostics & Logs
+      description: Paste any relevant terminal output, doctor output (`sf doctor`), or audit logs.
+      render: shell
