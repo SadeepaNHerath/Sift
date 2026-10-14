@@ -1,6 +1,7 @@
 package core
 
 import (
+	"os"
 	"testing"
 	"time"
 )
@@ -48,3 +49,20 @@ func TestPlatformUtilities(t *testing.T) {
 	_ = IsTTY()
 	_ = IsRunningAsSudo()
 }
+
+func TestIsRunningAsSudo_NotSpoofable(t *testing.T) {
+	// An unprivileged process setting SUDO_USER must not trick IsRunningAsSudo()
+	t.Setenv("SUDO_USER", "root")
+	t.Setenv("USER", "root")
+
+	// In test environment running as regular non-root user
+	if !IsRunningAsSudo() {
+		// As expected, fake SUDO_USER did not grant sudo status
+		return
+	}
+	// If the test runner actually is root (e.g. CI container as root), verify Geteuid
+	if os.Geteuid() != 0 {
+		t.Fatalf("IsRunningAsSudo() returned true for non-root EUID %d when SUDO_USER=root", os.Geteuid())
+	}
+}
+

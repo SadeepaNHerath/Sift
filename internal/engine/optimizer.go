@@ -203,12 +203,19 @@ func runTaskIcons(dryRun bool, logger *core.Logger) (TaskOutcome, error) {
 	removedCount := 0
 
 	// Locate IconServices cache directories in $TMPDIR and subpaths
-	tmpDir := os.TempDir()
+	tmpDir := filepath.Clean(os.TempDir())
 	matches, err := filepath.Glob(filepath.Join(tmpDir, "com.apple.iconservices*"))
 	if err == nil {
 		for _, m := range matches {
-			if err := os.RemoveAll(m); err == nil {
-				removedCount++
+			base := filepath.Base(m)
+			if !strings.HasPrefix(base, "com.apple.iconservices") {
+				continue
+			}
+			// Verify it is not a symlink to an outside directory
+			if fi, lerr := os.Lstat(m); lerr == nil && fi.Mode()&os.ModeSymlink == 0 {
+				if err := os.RemoveAll(m); err == nil {
+					removedCount++
+				}
 			}
 		}
 	}
@@ -218,8 +225,14 @@ func runTaskIcons(dryRun bool, logger *core.Logger) (TaskOutcome, error) {
 	cMatches, err := filepath.Glob(filepath.Join(parentC, "com.apple.iconservices*"))
 	if err == nil {
 		for _, m := range cMatches {
-			if err := os.RemoveAll(m); err == nil {
-				removedCount++
+			base := filepath.Base(m)
+			if !strings.HasPrefix(base, "com.apple.iconservices") {
+				continue
+			}
+			if fi, lerr := os.Lstat(m); lerr == nil && fi.Mode()&os.ModeSymlink == 0 {
+				if err := os.RemoveAll(m); err == nil {
+					removedCount++
+				}
 			}
 		}
 	}
@@ -436,16 +449,13 @@ func runTaskLaunchd(dryRun bool, logger *core.Logger) (TaskOutcome, error) {
 			size = fi.Size()
 		}
 
-		if err := core.MoveToTrash(p); err == nil {
+		if err := core.SafeRemove(p); err == nil {
 			removedCount++
 			if logger != nil {
 				logger.LogDeletion(p, size, "trash", "optimize:launchd")
 			}
-		} else if rmErr := os.Remove(p); rmErr == nil {
-			removedCount++
-			if logger != nil {
-				logger.LogDeletion(p, size, "permanent", "optimize:launchd")
-			}
+		} else if logger != nil {
+			logger.LogOperation("optimize", "launchd:blocked", "warning", fmt.Sprintf("Failed to safely remove broken plist %s: %v", p, err))
 		}
 	}
 

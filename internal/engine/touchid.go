@@ -23,26 +23,59 @@ const PamTouchIDLine = "auth       sufficient     pam_tid.so"
 var pamFileWriter = defaultPamFileWriter
 
 func defaultPamFileWriter(path string, content string) error {
+	tmpPath := path + ".sftmp"
+	bakPath := path + ".bak"
+
 	// Attempt direct file write first (works in test environments or when running as root)
-	err := os.WriteFile(path, []byte(content), 0644)
+	err := os.WriteFile(tmpPath, []byte(content), 0644)
 	if err == nil {
-		return nil
+		// If original file exists, create backup
+		if _, statErr := os.Stat(path); statErr == nil {
+			_ = copyPamFile(path, bakPath)
+		}
+		// Atomic rename
+		if renErr := os.Rename(tmpPath, path); renErr == nil {
+			return nil
+		}
+		_ = os.Remove(tmpPath)
 	}
 
-	// Fall back to elevated write using sudo tee when permission is denied
-	cmd := exec.Command("sudo", "tee", path)
+	// Fall back to elevated write using sudo tee to temporary file first
+	cmd := exec.Command("sudo", "tee", tmpPath)
 	cmd.Stdin = strings.NewReader(content)
 	cmd.Stdout = io.Discard
 	var errBuf bytes.Buffer
 	cmd.Stderr = &errBuf
 
 	if runErr := cmd.Run(); runErr != nil {
-		return fmt.Errorf("failed to write %s with sudo: %w (stderr: %s)", path, runErr, strings.TrimSpace(errBuf.String()))
+		_ = exec.Command("sudo", "rm", "-f", tmpPath).Run()
+		return fmt.Errorf("failed to write temporary PAM file %s with sudo: %w (stderr: %s)", tmpPath, runErr, strings.TrimSpace(errBuf.String()))
 	}
 
-	// Ensure standard 0644 permissions on the written PAM file
-	_ = exec.Command("sudo", "chmod", "644", path).Run()
+	// Ensure standard 0644 permissions on the temporary PAM file
+	_ = exec.Command("sudo", "chmod", "644", tmpPath).Run()
+
+	// Backup existing file if present
+	if _, statErr := os.Stat(path); statErr == nil {
+		_ = exec.Command("sudo", "cp", "-p", path, bakPath).Run()
+	}
+
+	// Atomically move the validated temporary file into place
+	mvCmd := exec.Command("sudo", "mv", tmpPath, path)
+	if mvErr := mvCmd.Run(); mvErr != nil {
+		_ = exec.Command("sudo", "rm", "-f", tmpPath).Run()
+		return fmt.Errorf("failed to atomically install %s with sudo: %w", path, mvErr)
+	}
+
 	return nil
+}
+
+func copyPamFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0644)
 }
 
 // IsTouchIDSupported checks if the host hardware supports Touch ID biometric authentication.

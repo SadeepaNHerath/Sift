@@ -93,7 +93,37 @@ func LoadWhitelist() (*Whitelist, error) {
 	return w, nil
 }
 
+// writeAtomicFile writes data to a temporary file in the same directory, syncs, and renames it atomically.
+func writeAtomicFile(targetPath string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(targetPath)
+	tmpFile, err := os.CreateTemp(dir, ".sf_atomic_*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmpFile.Name()
+	defer os.Remove(tmpName)
+
+	if _, err := tmpFile.Write(data); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Chmod(perm); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Sync(); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpName, targetPath)
+}
+
 // Contains checks if the given path is in the whitelist or is protected by a whitelisted ancestor directory.
+// On macOS APFS, comparisons are case-insensitive.
 func (w *Whitelist) Contains(path string) bool {
 	if w == nil {
 		return false
@@ -104,12 +134,15 @@ func (w *Whitelist) Contains(path string) bool {
 	cleanTarget := filepath.Clean(path)
 	for _, p := range w.paths {
 		cleanP := filepath.Clean(p)
-		if cleanTarget == cleanP {
+		if strings.EqualFold(cleanTarget, cleanP) {
 			return true
 		}
 		// If cleanP is an ancestor of cleanTarget, path is protected
-		if cleanP != "/" && strings.HasPrefix(cleanTarget, cleanP+string(filepath.Separator)) {
-			return true
+		if cleanP != "/" {
+			prefix := cleanP + string(filepath.Separator)
+			if len(cleanTarget) > len(prefix) && strings.EqualFold(cleanTarget[:len(prefix)], prefix) {
+				return true
+			}
 		}
 	}
 	return false
@@ -126,7 +159,7 @@ func (w *Whitelist) Add(path string) error {
 	defer w.mu.Unlock()
 
 	for _, p := range w.paths {
-		if filepath.Clean(p) == cleanPath {
+		if strings.EqualFold(filepath.Clean(p), cleanPath) {
 			return nil // already whitelisted
 		}
 	}
@@ -144,7 +177,7 @@ func (w *Whitelist) Remove(path string) error {
 
 	idx := -1
 	for i, p := range w.paths {
-		if filepath.Clean(p) == cleanPath {
+		if strings.EqualFold(filepath.Clean(p), cleanPath) {
 			idx = i
 			break
 		}
@@ -158,7 +191,7 @@ func (w *Whitelist) Remove(path string) error {
 	return nil
 }
 
-// Save writes the whitelist to disk with secure permissions (0600).
+// Save writes the whitelist to disk with secure permissions (0600) using atomic replacement.
 func (w *Whitelist) Save() error {
 	if err := EnsureDirs(); err != nil {
 		return err
@@ -174,7 +207,7 @@ func (w *Whitelist) Save() error {
 		return fmt.Errorf("failed to encode whitelist: %w", err)
 	}
 
-	if err := os.WriteFile(whitelistFile(), data, 0600); err != nil {
+	if err := writeAtomicFile(whitelistFile(), data, 0600); err != nil {
 		return fmt.Errorf("failed to save whitelist file: %w", err)
 	}
 	return nil
@@ -251,7 +284,7 @@ func LoadPreferences() (*Preferences, error) {
 	return prefs, nil
 }
 
-// Save writes user settings to disk.
+// Save writes user settings to disk using atomic replacement.
 func (p *Preferences) Save() error {
 	if err := EnsureDirs(); err != nil {
 		return err
@@ -262,7 +295,7 @@ func (p *Preferences) Save() error {
 		return fmt.Errorf("failed to encode preferences: %w", err)
 	}
 
-	if err := os.WriteFile(preferencesFile(), data, 0644); err != nil {
+	if err := writeAtomicFile(preferencesFile(), data, 0644); err != nil {
 		return fmt.Errorf("failed to save preferences file: %w", err)
 	}
 	return nil
@@ -303,7 +336,7 @@ func LoadPurgePaths() ([]string, error) {
 	return paths, nil
 }
 
-// SavePurgePaths saves custom project root paths to disk.
+// SavePurgePaths saves custom project root paths to disk using atomic replacement.
 func SavePurgePaths(paths []string) error {
 	if err := EnsureDirs(); err != nil {
 		return err
@@ -314,7 +347,7 @@ func SavePurgePaths(paths []string) error {
 		return fmt.Errorf("failed to encode purge paths: %w", err)
 	}
 
-	if err := os.WriteFile(purgePathsFile(), data, 0644); err != nil {
+	if err := writeAtomicFile(purgePathsFile(), data, 0644); err != nil {
 		return fmt.Errorf("failed to save purge paths file: %w", err)
 	}
 	return nil
