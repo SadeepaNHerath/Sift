@@ -12,14 +12,49 @@ import (
 
 // Model represents the interactive startup & launchd service manager dashboard.
 type Model struct {
-	allServices []engine.LaunchService
-	filtered    []engine.LaunchService
-	cursor      int
-	filterMode  string // "all", "zombies", "user", "global", "system"
-	statusMsg   string
-	width       int
-	height      int
-	quitting    bool
+	allServices  []engine.LaunchService
+	filtered     []engine.LaunchService
+	cursor       int
+	scrollOffset int
+	filterMode   string // "all", "zombies", "user", "global", "system"
+	statusMsg    string
+	width        int
+	height       int
+	quitting     bool
+}
+
+type toggleServiceMsg struct {
+	label  string
+	loaded bool
+	err    error
+}
+
+type removeZombieMsg struct {
+	label     string
+	plistPath string
+	err       error
+}
+
+func toggleServiceCmd(svc engine.LaunchService, newLoaded bool) tea.Cmd {
+	return func() tea.Msg {
+		err := engine.ToggleLaunchService(svc, newLoaded)
+		return toggleServiceMsg{
+			label:  svc.Label,
+			loaded: newLoaded,
+			err:    err,
+		}
+	}
+}
+
+func removeZombieCmd(svc engine.LaunchService) tea.Cmd {
+	return func() tea.Msg {
+		err := engine.RemoveZombiePlist(svc, nil)
+		return removeZombieMsg{
+			label:     svc.Label,
+			plistPath: svc.PlistPath,
+			err:       err,
+		}
+	}
 }
 
 // New creates a new startup dashboard model.
@@ -29,10 +64,34 @@ func New(services []engine.LaunchService) Model {
 		cursor:      0,
 		filterMode:  "all",
 		width:       80,
-		height:      20,
+		height:      24,
 	}
 	m.applyFilter()
 	return m
+}
+
+func (m Model) visibleRows() int {
+	h := m.height
+	if h <= 0 {
+		h = 24
+	}
+	v := h - 9
+	if v < 5 {
+		v = 5
+	}
+	return v
+}
+
+func (m *Model) adjustScroll() {
+	visible := m.visibleRows()
+	if m.cursor < m.scrollOffset {
+		m.scrollOffset = m.cursor
+	} else if m.cursor >= m.scrollOffset+visible {
+		m.scrollOffset = m.cursor - visible + 1
+	}
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
 }
 
 func (m *Model) applyFilter() {
@@ -63,6 +122,7 @@ func (m *Model) applyFilter() {
 	if m.cursor >= len(m.filtered) {
 		m.cursor = max(0, len(m.filtered)-1)
 	}
+	m.adjustScroll()
 }
 
 func (m Model) Init() tea.Cmd {
@@ -74,6 +134,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.adjustScroll()
+		return m, nil
+
+	case toggleServiceMsg:
+		if msg.err == nil {
+			m.statusMsg = fmt.Sprintf("Service %s toggled (loaded: %v)", msg.label, msg.loaded)
+			for i := range m.allServices {
+				if m.allServices[i].Label == msg.label {
+					m.allServices[i].Loaded = msg.loaded
+				}
+			}
+			for i := range m.filtered {
+				if m.filtered[i].Label == msg.label {
+					m.filtered[i].Loaded = msg.loaded
+				}
+			}
+		} else {
+			m.statusMsg = fmt.Sprintf("Toggle error: %v", msg.err)
+		}
+		return m, nil
+
+	case removeZombieMsg:
+		if msg.err == nil {
+			m.statusMsg = fmt.Sprintf("Trashed zombie plist: %s", msg.label)
+			m.removePathFromAll(msg.plistPath)
+			m.applyFilter()
+		} else {
+			m.statusMsg = fmt.Sprintf("Failed to remove plist: %v", msg.err)
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -85,11 +174,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				m.adjustScroll()
 			}
 
 		case "down", "j":
 			if m.cursor < len(m.filtered)-1 {
 				m.cursor++
+				m.adjustScroll()
 			}
 
 		case "z", "Z":
@@ -118,33 +209,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case " ":
 			if len(m.filtered) > 0 {
-				curr := &m.filtered[m.cursor]
+				curr := m.filtered[m.cursor]
 				newLoaded := !curr.Loaded
-				err := engine.ToggleLaunchService(*curr, newLoaded)
-				if err == nil {
-					curr.Loaded = newLoaded
-					m.statusMsg = fmt.Sprintf("Service %s toggled (loaded: %v)", curr.Label, newLoaded)
-				} else {
-					m.statusMsg = fmt.Sprintf("Toggle error: %v", err)
-				}
+				m.statusMsg = fmt.Sprintf("Toggling service %s...", curr.Label)
+				return m, toggleServiceCmd(curr, newLoaded)
 			}
 
 		case "x", "X":
 			if len(m.filtered) > 0 {
 				curr := m.filtered[m.cursor]
 				if curr.IsZombie {
-					err := engine.RemoveZombiePlist(curr, nil)
-					if err == nil {
-						m.statusMsg = fmt.Sprintf("Trashed zombie plist: %s", curr.Label)
-						// Refresh
-						m.removeCurrentFromAll()
-						m.applyFilter()
-					} else {
-						m.statusMsg = fmt.Sprintf("Failed to remove plist: %v", err)
-					}
-				} else {
-					m.statusMsg = "Cannot remove plist: only Zombie services can be removed here"
+					m.statusMsg = fmt.Sprintf("Trashing zombie plist %s...", curr.Label)
+					return m, removeZombieCmd(curr)
 				}
+				m.statusMsg = "Cannot remove plist: only Zombie services can be removed here"
 			}
 		}
 	}
@@ -152,11 +230,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) removeCurrentFromAll() {
-	if m.cursor >= len(m.filtered) {
-		return
-	}
-	targetPath := m.filtered[m.cursor].PlistPath
+func (m *Model) removePathFromAll(targetPath string) {
 	var updated []engine.LaunchService
 	for _, s := range m.allServices {
 		if s.PlistPath != targetPath {
@@ -187,9 +261,13 @@ func (m Model) View() string {
 		s.WriteString("  No matching services found for filter: " + m.filterMode + "\n")
 	}
 
-	// Render scrollable viewport
-	startIdx := max(0, m.cursor-7)
-	endIdx := min(len(m.filtered), startIdx+15)
+	// Render scrollable viewport based on window height
+	visible := m.visibleRows()
+	startIdx := m.scrollOffset
+	endIdx := startIdx + visible
+	if endIdx > len(m.filtered) {
+		endIdx = len(m.filtered)
+	}
 
 	for i := startIdx; i < endIdx; i++ {
 		svc := m.filtered[i]
@@ -240,10 +318,15 @@ func (m Model) View() string {
 				zombieCount++
 			}
 		}
-		info := fmt.Sprintf("Total Services: %d  │  Zombies: %d  │  Filter: %s",
+		scrollInfo := ""
+		if len(m.filtered) > visible {
+			scrollInfo = fmt.Sprintf("  │  [%d-%d of %d]", startIdx+1, endIdx, len(m.filtered))
+		}
+		info := fmt.Sprintf("Total Services: %d  │  Zombies: %d  │  Filter: %s%s",
 			len(m.allServices),
 			zombieCount,
 			strings.ToUpper(m.filterMode),
+			scrollInfo,
 		)
 		s.WriteString(dimStyle.Render("  "+info) + "\n")
 	}
