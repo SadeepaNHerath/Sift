@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 func TestUninstallCmdFlagsRegistered(t *testing.T) {

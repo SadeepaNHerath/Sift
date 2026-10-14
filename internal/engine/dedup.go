@@ -14,7 +14,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // DuplicateFile represents an individual duplicate candidate file.

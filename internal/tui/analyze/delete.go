@@ -6,8 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 // prepareDelete populates DeleteTargets from either multi-selected items or the item under cursor.

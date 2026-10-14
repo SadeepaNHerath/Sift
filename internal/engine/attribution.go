@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // Signal represents an attribution evidence signal linking a resource to an application.

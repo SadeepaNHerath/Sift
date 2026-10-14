@@ -12,8 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
-	"github.com/SadeepaNHerath/Spacefold/internal/tui/status"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/tui/status"
 )
 
 var (

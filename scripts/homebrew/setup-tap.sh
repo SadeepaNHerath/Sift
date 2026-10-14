@@ -11,7 +11,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TAP_USER="SadeepaNHerath"
 TAP_REPO="homebrew-tap"
 FORMULA_SRC="${ROOT_DIR}/Formula/sf.rb"
-CORE_SRC="${ROOT_DIR}/Formula/spacefold.rb"
+CORE_SRC="${ROOT_DIR}/Formula/sift.rb"
 
 # Color formatting
 GREEN="\033[0;32m"
@@ -75,7 +75,8 @@ git clone "https://github.com/${TAP_USER}/${TAP_REPO}.git" "${TMP_DIR}"
 mkdir -p "${TMP_DIR}/Formula"
 
 cp "${FORMULA_SRC}" "${TMP_DIR}/Formula/sf.rb"
-cp "${CORE_SRC}" "${TMP_DIR}/Formula/spacefold.rb"
+cp "${CORE_SRC}" "${TMP_DIR}/Formula/sift.rb"
+rm -f "${TMP_DIR}/Formula/spacefold.rb"
 
 # Generate Tap README
 cat > "${TMP_DIR}/README.md" << 'EOF'

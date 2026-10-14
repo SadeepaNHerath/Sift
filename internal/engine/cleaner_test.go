@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // setupMockHome sets up an isolated temporary home directory and config environment.

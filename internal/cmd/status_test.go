@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 func resetStatusFlags() {

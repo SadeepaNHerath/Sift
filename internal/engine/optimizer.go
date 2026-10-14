@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // OptimizeTask represents a single system optimization routine.

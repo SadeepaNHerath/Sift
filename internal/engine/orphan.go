@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // KnownProductFamilies defines groups of reverse-DNS prefixes that share corporate/product lineage.

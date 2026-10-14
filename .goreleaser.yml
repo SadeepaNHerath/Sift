@@ -1,6 +1,6 @@
 version: 2
 
-project_name: Spacefold
+project_name: Sift
 
 before:
   hooks:

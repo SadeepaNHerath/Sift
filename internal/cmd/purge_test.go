@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 	"os"
 	"path/filepath"
 	"strings"

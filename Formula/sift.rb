@@ -1,4 +1,4 @@
-class Spacefold < Formula
+class Sift < Formula
   desc "Terminal-first macOS maintenance, app uninstaller, and disk analysis toolkit"
   homepage "https://github.com/SadeepaNHerath/Sift"
   url "https://github.com/SadeepaNHerath/Sift/archive/refs/tags/v2.2.0.tar.gz"
@@ -13,9 +13,9 @@ class Spacefold < Formula
 
   def install
     system "go", "build", *std_go_args(ldflags: "-s -w -X main.version=v#{version}"), "./cmd/sf"
-    bin.install_symlink bin/"spacefold" => "sf"
+    bin.install_symlink bin/"sift" => "sf"
 
-    generate_completions_from_executable(bin/"spacefold", "completion")
+    generate_completions_from_executable(bin/"sift", "completion")
   end
 
   def caveats
@@ -27,7 +27,7 @@ class Spacefold < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/spacefold --version")
+    assert_match version.to_s, shell_output("#{bin}/sift --version")
     assert_match "Sift (sf)", shell_output("#{bin}/sf --help")
   end
 end

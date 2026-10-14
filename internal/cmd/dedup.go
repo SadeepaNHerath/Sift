@@ -10,9 +10,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
-	tuiDedup "github.com/SadeepaNHerath/Spacefold/internal/tui/dedup"
+	"github.com/SadeepaNHerath/Sift/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
+	tuiDedup "github.com/SadeepaNHerath/Sift/internal/tui/dedup"
 )
 
 var (

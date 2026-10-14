@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // ServiceLevel distinguishes user vs global vs system launchd jobs.

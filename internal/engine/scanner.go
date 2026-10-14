@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // FileEntry represents a filesystem node (file or directory) with metadata.

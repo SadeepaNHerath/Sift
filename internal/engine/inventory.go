@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // DefaultCacheTTL is the expiration duration for the app inventory cache (7 days).

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 func createTestZip(t *testing.T, zipPath string, entryNames []string) {
