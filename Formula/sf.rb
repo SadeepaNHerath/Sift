@@ -1,31 +1,31 @@
 class Sf < Formula
   desc "Terminal-first macOS maintenance, app uninstaller, and disk analysis toolkit"
-  homepage "https://github.com/SadeepaNHerath/Spacefold"
-  version "2.1.0"
+  homepage "https://github.com/SadeepaNHerath/Sift"
+  version "2.2.0"
   license "MIT"
+  head "https://github.com/SadeepaNHerath/Sift.git", branch: "main"
+
+  depends_on "go" => :build if build.head?
+  depends_on :macos
 
   on_macos do
-    if Hardware::CPU.arm?
-      url "https://github.com/SadeepaNHerath/Spacefold/releases/download/v#{version}/sf_#{version}_darwin_arm64.tar.gz"
-      sha256 "0000000000000000000000000000000000000000000000000000000000000000" # Updated upon release
-    else
-      url "https://github.com/SadeepaNHerath/Spacefold/releases/download/v#{version}/sf_#{version}_darwin_amd64.tar.gz"
-      sha256 "0000000000000000000000000000000000000000000000000000000000000000" # Updated upon release
+    on_arm do
+      url "https://github.com/SadeepaNHerath/Sift/releases/download/v#{version}/Spacefold_#{version}_darwin_arm64.tar.gz"
+      sha256 "0000000000000000000000000000000000000000000000000000000000000001"
+    end
+    on_intel do
+      url "https://github.com/SadeepaNHerath/Sift/releases/download/v#{version}/Spacefold_#{version}_darwin_amd64.tar.gz"
+      sha256 "0000000000000000000000000000000000000000000000000000000000000002"
     end
   end
 
-  head "https://github.com/SadeepaNHerath/Spacefold.git", branch: "main"
-
-  depends_on "go" => :build if build.head?
-
   def install
     if build.head?
-      system "go", "build", *std_go_args(ldflags: "-s -w -X github.com/SadeepaNHerath/Spacefold/internal/core.Version=#{version}"), "./cmd/sf"
+      system "go", "build", *std_go_args(ldflags: "-s -w -X main.version=v#{version}"), "./cmd/sf"
     else
       bin.install "sf"
     end
 
-    # Generate shell completions
     generate_completions_from_executable(bin/"sf", "completion")
   end
 
