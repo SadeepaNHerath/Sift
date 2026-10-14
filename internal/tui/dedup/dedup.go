@@ -245,7 +245,7 @@ func (m Model) View() string {
 			cursor = cursorStyle.Render("▶ ")
 		}
 
-		check := "[ ]"
+		var check string
 		if itm.Selected {
 			check = selectedStyle.Render("[✗]") // Red X = will be deleted
 		} else {

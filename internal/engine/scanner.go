@@ -264,7 +264,11 @@ type topFilesHeap []FileEntry
 func (h topFilesHeap) Len() int           { return len(h) }
 func (h topFilesHeap) Less(i, j int) bool { return h[i].Size < h[j].Size }
 func (h topFilesHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *topFilesHeap) Push(x any)        { *h = append(*h, x.(FileEntry)) }
+func (h *topFilesHeap) Push(x any) {
+	if entry, ok := x.(FileEntry); ok {
+		*h = append(*h, entry)
+	}
+}
 func (h *topFilesHeap) Pop() any {
 	old := *h
 	n := len(old)
@@ -401,7 +405,9 @@ func (s *DiskScanner) ScanTopFiles(root string, count int) ([]FileEntry, error) 
 	// Extract in descending order
 	result := make([]FileEntry, globalHeap.Len())
 	for i := len(result) - 1; i >= 0; i-- {
-		result[i] = heap.Pop(globalHeap).(FileEntry)
+		if entry, ok := heap.Pop(globalHeap).(FileEntry); ok {
+			result[i] = entry
+		}
 	}
 
 	return result, nil

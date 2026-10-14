@@ -80,62 +80,74 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// 1. Confirmation Modal Mode
 	if m.ConfirmingDelete {
-		switch key {
-		case "y", "Y":
-			return m, m.executeDelete()
-		case "n", "N", "esc":
-			m.ConfirmingDelete = false
-			m.DeleteTargets = nil
-			return m, nil
-		default:
-			return m, nil
-		}
+		return m.handleConfirmKey(key)
 	}
 
 	// 2. Search / Live Filter Mode
 	if m.Searching {
-		switch key {
-		case "esc":
-			m.Searching = false
-			m.SearchQuery = ""
-			m.updateFiltered()
-			m.clampCursor()
-			m.adjustOffset()
-			return m, nil
-		case "enter":
-			m.Searching = false
-			return m, nil
-		case "backspace":
-			if len(m.SearchQuery) > 0 {
-				m.SearchQuery = m.SearchQuery[:len(m.SearchQuery)-1]
-				m.updateFiltered()
-				m.clampCursor()
-				m.adjustOffset()
-			}
-			return m, nil
-		case "up":
-			m.Cursor--
-			m.clampCursor()
-			m.adjustOffset()
-			return m, nil
-		case "down":
-			m.Cursor++
-			m.clampCursor()
-			m.adjustOffset()
-			return m, nil
-		default:
-			// Append character if single rune
-			if len(msg.Runes) > 0 {
-				m.SearchQuery += string(msg.Runes)
-				m.updateFiltered()
-				m.clampCursor()
-				m.adjustOffset()
-			}
-			return m, nil
-		}
+		return m.handleSearchKey(msg, key)
 	}
 
 	// 3. Normal Directory Exploration Mode
+	return m.handleExploreKey(key)
+}
+
+func (m Model) handleConfirmKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "y", "Y":
+		return m, m.executeDelete()
+	case "n", "N", "esc":
+		m.ConfirmingDelete = false
+		m.DeleteTargets = nil
+		return m, nil
+	default:
+		return m, nil
+	}
+}
+
+func (m Model) handleSearchKey(msg tea.KeyMsg, key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		m.Searching = false
+		m.SearchQuery = ""
+		m.updateFiltered()
+		m.clampCursor()
+		m.adjustOffset()
+		return m, nil
+	case "enter":
+		m.Searching = false
+		return m, nil
+	case "backspace":
+		if len(m.SearchQuery) > 0 {
+			m.SearchQuery = m.SearchQuery[:len(m.SearchQuery)-1]
+			m.updateFiltered()
+			m.clampCursor()
+			m.adjustOffset()
+		}
+		return m, nil
+	case "up":
+		m.Cursor--
+		m.clampCursor()
+		m.adjustOffset()
+		return m, nil
+	case "down":
+		m.Cursor++
+		m.clampCursor()
+		m.adjustOffset()
+		return m, nil
+	default:
+		// Append character if single rune
+		if len(msg.Runes) > 0 {
+			m.SearchQuery += string(msg.Runes)
+			m.updateFiltered()
+			m.clampCursor()
+			m.adjustOffset()
+		}
+		return m, nil
+	}
+}
+
+func (m Model) handleExploreKey(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "q":
 		return m, tea.Quit

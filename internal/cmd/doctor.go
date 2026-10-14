@@ -116,9 +116,10 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		for _, check := range report.Results {
 			title := escapeWorkflowCommand(check.Name)
 			msg := escapeWorkflowCommand(fmt.Sprintf("%s - %s", check.Summary, check.Details))
-			if check.Severity == engine.SeverityCritical {
+			switch check.Severity {
+			case engine.SeverityCritical:
 				fmt.Fprintf(out, "::error title=%s::%s\n", title, msg)
-			} else if check.Severity == engine.SeverityWarning {
+			case engine.SeverityWarning:
 				fmt.Fprintf(out, "::warning title=%s::%s\n", title, msg)
 			}
 		}

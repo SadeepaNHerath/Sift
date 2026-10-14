@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"os"
@@ -50,9 +49,7 @@ func (a AppInfo) NormalizedName() string {
 // VendorPrefix returns the first two reverse-DNS labels of the bundle identifier (e.g., "com.google").
 func (a AppInfo) VendorPrefix() string {
 	id := strings.ToLower(strings.TrimSpace(a.BundleID))
-	if strings.HasPrefix(id, "group.") {
-		id = strings.TrimPrefix(id, "group.")
-	}
+	id = strings.TrimPrefix(id, "group.")
 	parts := strings.Split(id, ".")
 	if len(parts) >= 2 {
 		return parts[0] + "." + parts[1]
@@ -237,11 +234,6 @@ func parseInfoPlist(plistPath string) (*infoPlistFields, error) {
 
 // parsePlistXML extracts dictionary keys from standard Apple XML property lists.
 func parsePlistXML(data []byte) (*infoPlistFields, error) {
-	type xmlDict struct {
-		XMLName xml.Name
-		Content []byte `xml:",innerxml"`
-	}
-
 	content := string(data)
 	fields := &infoPlistFields{}
 

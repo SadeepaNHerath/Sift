@@ -1,6 +1,6 @@
 module github.com/SadeepaNHerath/Sift
 
-go 1.27.2
+go 1.26.0
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0

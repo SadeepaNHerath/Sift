@@ -113,10 +113,7 @@ func checkGitStatus(dir string) (bool, bool, error) {
 
 	statusCmd := exec.CommandContext(statusCtx, gitPath, "-C", cleanDir, "status", "--porcelain")
 	statusOut, statusErr := statusCmd.Output()
-	isDirty := false
-	if statusErr == nil && len(strings.TrimSpace(string(statusOut))) > 0 {
-		isDirty = true
-	}
+	isDirty := statusErr == nil && len(strings.TrimSpace(string(statusOut))) > 0
 
 	res := gitStatusResult{isRepo: true, isDirty: isDirty, err: statusErr}
 	gitCacheMu.Lock()

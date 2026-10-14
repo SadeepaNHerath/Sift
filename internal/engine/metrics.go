@@ -677,10 +677,7 @@ func collectTopProcesses(limit int) []ProcessInfo {
 
 		// Recombine the executable path in case of spaces
 		rawComm := strings.Join(fields[4:], " ")
-		baseName := filepath.Base(rawComm)
-		if strings.HasSuffix(baseName, ".app") {
-			baseName = strings.TrimSuffix(baseName, ".app")
-		}
+		baseName := strings.TrimSuffix(filepath.Base(rawComm), ".app")
 
 		results = append(results, ProcessInfo{
 			PID:        pid,

@@ -196,7 +196,7 @@ func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepN
 	headStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("255"))
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 	keptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	targetStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+	var targetStyle lipgloss.Style
 	sizeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
 	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
 
@@ -266,9 +266,10 @@ func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepN
 	)
 	fmt.Fprintln(out, boxStyle.Render(summary))
 
-	if action == engine.ActionClone {
+	switch action {
+	case engine.ActionClone:
 		fmt.Fprintln(out, infoStyle.Render("ℹ  APFS Copy-on-Write clones will share disk blocks instantly with zero risk of breaking dependent applications."))
-	} else if action == engine.ActionHardlink {
+	case engine.ActionHardlink:
 		fmt.Fprintln(out, infoStyle.Render("ℹ  Filesystem hardlinks will point duplicates to the exact same inode, freeing disk space."))
 	}
 	fmt.Fprintln(out)
