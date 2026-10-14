@@ -122,9 +122,9 @@ func TestCleanCmd_ExecuteWithYes(t *testing.T) {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 
-	out, err := executeCleanWithArgs([]string{"--yes"})
+	out, err := executeCleanWithArgs([]string{"user-essentials", "--yes"})
 	if err != nil {
-		t.Fatalf("sf clean --yes failed: %v", err)
+		t.Fatalf("sf clean user-essentials --yes failed: %v", err)
 	}
 
 	if !strings.Contains(out, "Reclaimed") && !strings.Contains(out, "Summary") {

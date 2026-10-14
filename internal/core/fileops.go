@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // RemovalReport captures the outcome of a batch removal operation.
@@ -80,8 +82,10 @@ func moveToTrashWithDest(path string) (string, error) {
 
 	// Tier 1: /usr/bin/trash (macOS 15+)
 	if fi, err := os.Stat("/usr/bin/trash"); err == nil && !fi.IsDir() {
-		cmd := exec.Command("/usr/bin/trash", "-v", normPath)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cmd := exec.CommandContext(ctx, "/usr/bin/trash", "-v", normPath)
 		output, runErr := cmd.CombinedOutput()
+		cancel()
 		if runErr == nil {
 			dest := parseTrashDestination(string(output))
 			if dest == "" {
@@ -115,8 +119,10 @@ func moveToTrashWithDest(path string) (string, error) {
 
 	// Tier 3: AppleScript Finder fallback
 	script := fmt.Sprintf(`tell application "Finder" to delete (POSIX file %q as alias)`, normPath)
-	cmd := exec.Command("osascript", "-e", script)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	cmd := exec.CommandContext(ctx, "osascript", "-e", script)
 	output, scriptErr := cmd.CombinedOutput()
+	cancel()
 	if scriptErr == nil {
 		dest := filepath.Join(getTrashDir(), filepath.Base(normPath))
 		return dest, nil
