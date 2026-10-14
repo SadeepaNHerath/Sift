@@ -1,34 +1,42 @@
-# Binaries
+# Binaries and compiled outputs
 bin/
 /sf
+dist/
+build/
 *.exe
 *.dll
 *.so
 *.dylib
 
-# Test binary
+# Test binaries and coverage reports
 *.test
-
-# Output
 *.out
-dist/
+coverage.*
+profile.*
 
 # Go workspace
 go.work
 go.work.sum
 
-# IDE
+# Temporary, backup, and staging files
+*.tmp
+*.bak
+*.orig
+*~
+.sf_*
+*.sftmp*
+
+# IDE and editors
 .idea/
 .vscode/
 *.swp
 *.swo
-*~
 
-# macOS
+# macOS system clutter
 .DS_Store
 .AppleDouble
 .LSOverride
 Icon?
-
-# Build
-build/
+.Spotlight-V100
+.Trashes
+.fseventsd
