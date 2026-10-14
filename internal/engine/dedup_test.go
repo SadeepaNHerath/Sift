@@ -216,7 +216,7 @@ func TestHardlinkDuplicates_Live(t *testing.T) {
 		t.Fatalf("HardlinkDuplicates failed: %v", err)
 	}
 	if liveResult.ProcessedFiles != 1 {
-		t.Errorf("expected 1 hardlinked file, got %d", liveResult.ProcessedFiles)
+		t.Errorf("expected 1 hardlink file, got %d", liveResult.ProcessedFiles)
 	}
 
 	// Inode verification

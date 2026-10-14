@@ -558,7 +558,7 @@ func renderSparkline(points []float64, width int) string {
 	sparkChars := []rune{' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
 	// Determine min and max
-	var maxVal float64 = 0.001
+	maxVal := 0.001
 	for _, p := range points {
 		if p > maxVal {
 			maxVal = p

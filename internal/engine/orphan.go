@@ -167,10 +167,7 @@ func FindOrphanedResourcesInDirs(installedApps []AppInfo, dirs []OrphanSearchDir
 // NormalizeBundleID lowercases the ID and strips "group." prefix.
 func NormalizeBundleID(raw string) string {
 	id := strings.ToLower(strings.TrimSpace(raw))
-	if strings.HasPrefix(id, "group.") {
-		id = strings.TrimPrefix(id, "group.")
-	}
-	return id
+	return strings.TrimPrefix(id, "group.")
 }
 
 // ExtractVendorPrefix extracts the first two reverse-DNS labels (e.g. "com.docker", "net.whatsapp").

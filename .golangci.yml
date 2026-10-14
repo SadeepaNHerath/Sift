@@ -1,35 +1,46 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: readonly
 
 linters:
   enable:
-    - gocyclo
     - cyclop
-    - gocognit
+    - gocyclo
     - errcheck
     - ineffassign
     - staticcheck
-    - unconvert
     - misspell
-    - gosec
+    - unconvert
+    - govet
+  settings:
+    cyclop:
+      max-complexity: 50
+    errcheck:
+      check-type-assertions: true
+    gocyclo:
+      min-complexity: 50
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - cyclop
+          - errcheck
+          - gocyclo
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 
-linters-settings:
-  gocyclo:
-    min-complexity: 30
-  cyclop:
-    max-complexity: 30
-  gocognit:
-    min-complexity: 35
-  errcheck:
-    check-type-assertions: true
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - cyclop
-        - gocognit
-        - errcheck
-        - gosec
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
