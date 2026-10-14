@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // Item represents a single selectable row in the menu.

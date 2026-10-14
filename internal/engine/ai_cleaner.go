@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // AIProvider identifies the AI/LLM tool or framework.

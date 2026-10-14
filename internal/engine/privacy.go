@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // PrivacyTarget represents a category of forensic or privacy-sensitive data on macOS.

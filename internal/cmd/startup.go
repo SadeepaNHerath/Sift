@@ -9,9 +9,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
-	tuiStartup "github.com/SadeepaNHerath/Spacefold/internal/tui/startup"
+	"github.com/SadeepaNHerath/Sift/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
+	tuiStartup "github.com/SadeepaNHerath/Sift/internal/tui/startup"
 )
 
 var (

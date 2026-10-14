@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // KnownArtifactDirs defines common developer dependencies and build artifact directory names.

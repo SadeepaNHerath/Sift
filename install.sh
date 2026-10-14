@@ -113,13 +113,24 @@ CLEAN_VERSION="${TAG#v}"
 TMP_DIR=$(mktemp -d -t sf_install_XXXXXX)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-TARBALL_NAME="Spacefold_${CLEAN_VERSION}_darwin_${TARGET_ARCH}.tar.gz"
+TARBALL_NAME="Sift_${CLEAN_VERSION}_darwin_${TARGET_ARCH}.tar.gz"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${TARBALL_NAME}"
 CHECKSUMS_URL="https://github.com/${REPO}/releases/download/${TAG}/checksums.txt"
 
 log_info "Downloading ${TARBALL_NAME}..."
 
 HTTP_CODE=$(curl -fsSL -w "%{http_code}" -o "${TMP_DIR}/${TARBALL_NAME}" "$DOWNLOAD_URL" 2>/dev/null || echo "000")
+
+# If Sift_... archive is not found (e.g. for legacy v2.2.0 assets), fall back to Spacefold_...
+if [ "$HTTP_CODE" != "200" ]; then
+    LEGACY_TARBALL="Spacefold_${CLEAN_VERSION}_darwin_${TARGET_ARCH}.tar.gz"
+    LEGACY_URL="https://github.com/${REPO}/releases/download/${TAG}/${LEGACY_TARBALL}"
+    LEGACY_CODE=$(curl -fsSL -w "%{http_code}" -o "${TMP_DIR}/${LEGACY_TARBALL}" "$LEGACY_URL" 2>/dev/null || echo "000")
+    if [ "$LEGACY_CODE" = "200" ]; then
+        TARBALL_NAME="$LEGACY_TARBALL"
+        HTTP_CODE="200"
+    fi
+fi
 
 # If GitHub release tarball isn't available (e.g. installing from dev or pre-release), compile directly if Go exists
 if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "000" ]; then

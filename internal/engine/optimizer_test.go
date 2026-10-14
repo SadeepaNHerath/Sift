@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 func TestTaskCatalog(t *testing.T) {

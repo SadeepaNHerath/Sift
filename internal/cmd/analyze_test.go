@@ -93,7 +93,7 @@ func TestAnalyzeCmd_JSON_Top(t *testing.T) {
 }
 
 func TestAnalyzeCmd_NonExistentPath(t *testing.T) {
-	_, err := executeAnalyzeWithArgs([]string{"--json", "/nonexistent_spacefold_analyze_dir"})
+	_, err := executeAnalyzeWithArgs([]string{"--json", "/nonexistent_sift_analyze_dir"})
 	if err == nil {
 		t.Fatal("expected error for non-existent path, got nil")
 	}

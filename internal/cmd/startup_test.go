@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 func resetStartupFlags() {

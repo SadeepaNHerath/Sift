@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // Constants identifying each of the 13 cleanup areas and external volume support.

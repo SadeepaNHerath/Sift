@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // directInstallerExts contains file extensions for standalone macOS installers and disk images.

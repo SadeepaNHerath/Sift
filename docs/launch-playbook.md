@@ -154,4 +154,4 @@ Submit a Pull Request to these high-traffic curated lists:
 - [ ] **Step 1**: Deploy `SadeepaNHerath/homebrew-tap` via `./scripts/homebrew/setup-tap.sh`.
 - [ ] **Step 2**: Publish launch posts on Hacker News (Show HN), Reddit (`r/mac`, `r/commandline`), and X.
 - [ ] **Step 3**: Monitor GitHub Stars counter until reaching **75 stars**.
-- [ ] **Step 4**: Submit PR to `Homebrew/homebrew-core` using [`Formula/spacefold.rb`](file:///Users/sadeepaherath/Temp%20Proj/Spacefold/Formula/spacefold.rb).
+- [ ] **Step 4**: Submit PR to `Homebrew/homebrew-core` using `Formula/sift.rb` (or `Formula/sf.rb`).

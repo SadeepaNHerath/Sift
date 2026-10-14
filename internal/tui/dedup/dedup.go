@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 // Item represents a single file row in the duplicate explorer.

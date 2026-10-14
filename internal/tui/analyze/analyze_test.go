@@ -9,7 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 func createTestModel(t *testing.T) Model {

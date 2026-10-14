@@ -131,7 +131,7 @@ func TestScanDirProgressive_LeafFile(t *testing.T) {
 }
 
 func TestScanDirProgressive_NonExistent(t *testing.T) {
-	_, err := ScanDirProgressive("/nonexistent_path_spacefold_test", nil)
+	_, err := ScanDirProgressive("/nonexistent_path_sift_test", nil)
 	if err == nil {
 		t.Fatal("expected error for non-existent path, got nil")
 	}

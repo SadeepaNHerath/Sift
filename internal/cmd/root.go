@@ -14,7 +14,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/tui/mainmenu"
+	"github.com/SadeepaNHerath/Sift/internal/tui/mainmenu"
 )
 
 var version = "dev"

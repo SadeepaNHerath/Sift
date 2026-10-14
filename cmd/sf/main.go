@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/cmd"
+	"github.com/SadeepaNHerath/Sift/internal/cmd"
 )
 
 var version = "dev"

@@ -9,9 +9,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/SadeepaNHerath/Spacefold/internal/core"
-	"github.com/SadeepaNHerath/Spacefold/internal/engine"
-	"github.com/SadeepaNHerath/Spacefold/internal/tui/analyze"
+	"github.com/SadeepaNHerath/Sift/internal/core"
+	"github.com/SadeepaNHerath/Sift/internal/engine"
+	"github.com/SadeepaNHerath/Sift/internal/tui/analyze"
 )
 
 var (
