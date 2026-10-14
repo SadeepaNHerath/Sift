@@ -59,8 +59,14 @@ func TestWhitelist(t *testing.T) {
 	if !w.Contains("/Users/test/Protected") {
 		t.Fatalf("Contains failed for exact match")
 	}
+	if !w.Contains("/users/test/protected") {
+		t.Fatalf("Contains failed for case-insensitive match on APFS")
+	}
 	if !w.Contains("/Users/test/Protected/subdir/file.txt") {
 		t.Fatalf("Contains failed for child path")
+	}
+	if !w.Contains("/USERS/TEST/PROTECTED/SUBDIR/FILE.TXT") {
+		t.Fatalf("Contains failed for case-insensitive child path on APFS")
 	}
 	if w.Contains("/Users/test/Other") {
 		t.Fatalf("Contains returned true for non-whitelisted path")

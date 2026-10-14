@@ -419,8 +419,12 @@ func ValidatePathForDeletion(path string) error {
 		return ErrAppleBundleProtected
 	}
 
-	// Check user whitelist if configured
-	if wl, err := LoadWhitelist(); err == nil && wl != nil && wl.Contains(normalized) {
+	// Check user whitelist if configured (fail-closed if file exists but cannot be read)
+	wl, err := LoadWhitelist()
+	if err != nil && !os.IsNotExist(err) && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("safety check blocked: failed to verify whitelist: %w", err)
+	}
+	if wl != nil && wl.Contains(normalized) {
 		return ErrUserWhitelisted
 	}
 
@@ -431,15 +435,15 @@ func ValidatePathForDeletion(path string) error {
 		if info, err := os.Lstat(curr); err == nil {
 			if info.Mode()&os.ModeSymlink != 0 {
 				resolvedParent, err := filepath.EvalSymlinks(curr)
-				if err == nil {
+				if err == nil && !isDarwinRootAlias(curr, resolvedParent) {
 					// Check if resolved parent is a protected tree
-					if isSystemProtectedPrefix(resolvedParent) || IsSensitiveUserPath(resolvedParent) {
+					if IsSystemPath(resolvedParent) || IsSensitiveUserPath(resolvedParent) {
 						return ErrAncestorSymlinkProtected
 					}
 					rel, relErr := filepath.Rel(curr, normalized)
 					if relErr == nil {
 						reconstructed := filepath.Join(resolvedParent, rel)
-						if isSystemProtectedPrefix(reconstructed) || IsSensitiveUserPath(reconstructed) {
+						if IsSystemPath(reconstructed) || IsSensitiveUserPath(reconstructed) {
 							return ErrAncestorSymlinkProtected
 						}
 						if hasAppleBundleComponent(reconstructed) {
@@ -516,3 +520,13 @@ func hasAppleBundleComponent(path string) bool {
 	}
 	return false
 }
+
+// isDarwinRootAlias checks if the symlink is a standard macOS root alias (/var -> /private/var, /tmp -> /private/tmp, etc.).
+func isDarwinRootAlias(curr, target string) bool {
+	c := filepath.Clean(curr)
+	t := filepath.Clean(target)
+	return (c == "/var" && t == "/private/var") ||
+		(c == "/tmp" && t == "/private/tmp") ||
+		(c == "/etc" && t == "/private/etc")
+}
+

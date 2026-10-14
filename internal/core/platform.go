@@ -152,7 +152,8 @@ func IsTTY() bool {
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
-// IsRunningAsSudo checks if the current process is running under sudo privileges.
+// IsRunningAsSudo checks if the current process is running with elevated root privileges.
 func IsRunningAsSudo() bool {
-	return os.Getenv("SUDO_USER") != "" || os.Geteuid() == 0
+	return os.Geteuid() == 0
 }
+

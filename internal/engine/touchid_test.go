@@ -195,3 +195,31 @@ func TestIsTouchIDSupported(t *testing.T) {
 	// Should run cleanly without panics
 	_ = IsTouchIDSupported()
 }
+
+func TestEnable_CreatesBackupOfExistingFile(t *testing.T) {
+	orig := PamSudoLocalPath
+	defer func() { PamSudoLocalPath = orig }()
+
+	dir := t.TempDir()
+	tempFile := filepath.Join(dir, "sudo_local")
+	PamSudoLocalPath = tempFile
+
+	initialContent := "# initial config\nauth required pam_permit.so\n"
+	if err := os.WriteFile(tempFile, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("failed to write initial file: %v", err)
+	}
+
+	if err := Enable(); err != nil {
+		t.Fatalf("Enable() failed: %v", err)
+	}
+
+	bakFile := tempFile + ".bak"
+	bakContent, err := os.ReadFile(bakFile)
+	if err != nil {
+		t.Fatalf("expected backup file %s to exist: %v", bakFile, err)
+	}
+	if string(bakContent) != initialContent {
+		t.Errorf("backup content mismatch: expected %q, got %q", initialContent, string(bakContent))
+	}
+}
+

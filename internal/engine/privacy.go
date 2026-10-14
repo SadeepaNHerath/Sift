@@ -222,8 +222,36 @@ func WipePrivacyTargets(targets []PrivacyTarget, dryRun bool, logger *core.Logge
 	return report, nil
 }
 
+func checkBrowserRunningForPath(p string) error {
+	if strings.Contains(p, "Google/Chrome") && isProcessRunning("Google Chrome") {
+		return fmt.Errorf("skipped: Google Chrome is currently running (close browser to wipe local storage safely)")
+	}
+	if strings.Contains(p, "BraveSoftware") && (isProcessRunning("Brave Browser") || isProcessRunning("Brave")) {
+		return fmt.Errorf("skipped: Brave Browser is currently running (close browser to wipe local storage safely)")
+	}
+	if strings.Contains(p, "Arc") && isProcessRunning("Arc") {
+		return fmt.Errorf("skipped: Arc is currently running (close browser to wipe local storage safely)")
+	}
+	if strings.Contains(p, "/Safari/") && isProcessRunning("Safari") {
+		return fmt.Errorf("skipped: Safari is currently running (close browser to wipe local storage safely)")
+	}
+	return nil
+}
+
+func isDarwinRootAlias(curr, target string) bool {
+	c := filepath.Clean(curr)
+	t := filepath.Clean(target)
+	return (c == "/var" && t == "/private/var") ||
+		(c == "/tmp" && t == "/private/tmp") ||
+		(c == "/etc" && t == "/private/etc")
+}
+
 // wipeSinglePrivacyPath validates safe boundaries and moves forensic items to Trash.
 func wipeSinglePrivacyPath(p string) error {
+	if err := checkBrowserRunningForPath(p); err != nil {
+		return err
+	}
+
 	norm, err := core.NormalizePath(p)
 	if err != nil {
 		return err
@@ -234,8 +262,63 @@ func wipeSinglePrivacyPath(p string) error {
 	if core.IsSystemPath(norm) {
 		return core.ErrSystemProtectedPath
 	}
-	if strings.Contains(norm, "/.ssh") || strings.Contains(norm, "/.gnupg") || strings.Contains(norm, "/Library/Keychains") {
+	if core.IsSensitiveUserPath(norm) {
 		return core.ErrSensitiveUserPath
 	}
+
+	// User whitelist check
+	if wl, err := core.LoadWhitelist(); err == nil && wl != nil && wl.Contains(norm) {
+		return core.ErrUserWhitelisted
+	}
+
+	// Ancestor symlink traversal validation
+	curr := filepath.Dir(norm)
+	for curr != "/" && curr != "." {
+		if info, err := os.Lstat(curr); err == nil {
+			if info.Mode()&os.ModeSymlink != 0 {
+				resolvedParent, err := filepath.EvalSymlinks(curr)
+				if err == nil && !isDarwinRootAlias(curr, resolvedParent) {
+					if core.IsSystemPath(resolvedParent) || core.IsSensitiveUserPath(resolvedParent) {
+						return core.ErrAncestorSymlinkProtected
+					}
+					rel, relErr := filepath.Rel(curr, norm)
+					if relErr == nil {
+						reconstructed := filepath.Join(resolvedParent, rel)
+						if core.IsSystemPath(reconstructed) || core.IsSensitiveUserPath(reconstructed) {
+							return core.ErrAncestorSymlinkProtected
+						}
+					}
+				}
+			}
+		}
+		parent := filepath.Dir(curr)
+		if parent == curr {
+			break
+		}
+		curr = parent
+	}
+
+	// Leaf symlink target validation
+	if lstat, err := os.Lstat(norm); err == nil {
+		if lstat.Mode()&os.ModeSymlink != 0 {
+			realTarget, err := filepath.EvalSymlinks(norm)
+			if err == nil {
+				if core.IsSystemPath(realTarget) || core.IsSensitiveUserPath(realTarget) {
+					return core.ErrSymlinkTargetProtected
+				}
+			}
+		}
+	}
+
+	// Inode binding & verification (anti-TOCTOU)
+	if _, err := os.Lstat(norm); err == nil {
+		ref, err := core.BindInode(norm)
+		if err == nil {
+			if err := ref.Verify(); err != nil {
+				return err
+			}
+		}
+	}
+
 	return core.MoveToTrash(norm)
 }

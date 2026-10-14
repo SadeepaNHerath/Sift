@@ -34,7 +34,7 @@ func (m *Model) prepareDelete() {
 	}
 }
 
-// executeDelete moves targets to Trash using core.MoveToTrash.
+// executeDelete moves targets to Trash using core.SafeRemove with 5-layer safety validation.
 func (m *Model) executeDelete() tea.Cmd {
 	targets := make([]engine.FileEntry, len(m.DeleteTargets))
 	copy(targets, m.DeleteTargets)
@@ -44,8 +44,15 @@ func (m *Model) executeDelete() tea.Cmd {
 		var count int
 		var firstErr error
 
+		logger, _ := core.NewLogger()
+		defer func() {
+			if logger != nil {
+				logger.Close()
+			}
+		}()
+
 		for _, item := range targets {
-			err := core.MoveToTrash(item.Path)
+			err := core.SafeRemove(item.Path)
 			if err != nil {
 				if firstErr == nil {
 					firstErr = err
@@ -53,7 +60,15 @@ func (m *Model) executeDelete() tea.Cmd {
 			} else {
 				count++
 				totalFreed += item.Size
+				if logger != nil {
+					logger.LogDeletion(item.Path, item.Size, "trash", "analyze")
+				}
 			}
+		}
+
+		if logger != nil && count > 0 {
+			logger.LogOperation("analyze", "delete", "success",
+				fmt.Sprintf("Moved %d item(s) (%s) to trash", count, core.FormatBytes(totalFreed)))
 		}
 
 		return deleteFinishedMsg{
