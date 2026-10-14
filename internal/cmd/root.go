@@ -11,6 +11,10 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/SadeepaNHerath/Spacefold/internal/tui/mainmenu"
 )
 
 var version = "dev"
@@ -107,15 +111,6 @@ func printStubMessage(cmdName string) {
 	fmt.Printf("%s: Coming soon...\n", cmdName)
 }
 
-// menuItem defines an item on the interactive main menu.
-type menuItem struct {
-	num         string
-	name        string
-	icon        string
-	description string
-	cmd         *cobra.Command
-}
-
 // isTTY reports whether both stdin and stdout are attached to a terminal.
 func isTTY() bool {
 	stdinInfo, err := os.Stdin.Stat()
@@ -184,295 +179,110 @@ func collectSystemSummary() sysSummary {
 	return summary
 }
 
-// enableRawMode puts the terminal in raw mode and returns a cleanup function
-// to restore the original terminal state and cursor.
-func enableRawMode() (func(), error) {
-	saveCmd := exec.Command("stty", "-g")
-	saveCmd.Stdin = os.Stdin
-	stateBytes, err := saveCmd.Output()
-	if err != nil {
-		return func() {}, err
-	}
-	savedState := strings.TrimSpace(string(stateBytes))
-
-	rawCmd := exec.Command("stty", "raw", "-echo")
-	rawCmd.Stdin = os.Stdin
-	if err := rawCmd.Run(); err != nil {
-		return func() {}, err
-	}
-
-	// Hide cursor
-	fmt.Print("\033[?25l")
-
-	restored := false
-	restore := func() {
-		if restored {
-			return
-		}
-		restored = true
-		// Show cursor
-		fmt.Print("\033[?25h")
-		// Restore terminal attributes
-		restoreCmd := exec.Command("stty", savedState)
-		restoreCmd.Stdin = os.Stdin
-		_ = restoreCmd.Run()
-	}
-
-	return restore, nil
-}
-
-// runInteractiveMenu renders an interactive Lipgloss-styled menu with raw keyboard navigation.
+// runInteractiveMenu renders an interactive Bubble Tea dashboard menu with full keyboard navigation.
 func runInteractiveMenu(parentCmd *cobra.Command) error {
-	restoreTerminal, err := enableRawMode()
+	sys := collectSystemSummary()
+	mSys := mainmenu.SysSummary{
+		Hostname:  sys.hostname,
+		OSVersion: sys.osVersion,
+		DiskFree:  sys.diskFree,
+		DiskTotal: sys.diskTotal,
+		DiskPct:   sys.diskPct,
+		Username:  sys.username,
+	}
+
+	menuItems := []mainmenu.MenuItem{
+		{
+			Num:         "1",
+			Name:        "Clean",
+			Icon:        "🧹",
+			Description: "Clean system, app, and local AI model caches",
+			Cmd:         cleanCmd,
+		},
+		{
+			Num:         "2",
+			Name:        "Uninstall",
+			Icon:        "🗑️ ",
+			Description: "Safely remove applications and all associated leftovers",
+			Cmd:         uninstallCmd,
+		},
+		{
+			Num:         "3",
+			Name:        "Optimize",
+			Icon:        "⚡",
+			Description: "Rebuild caches, flush DNS, and run system optimizations",
+			Cmd:         optimizeCmd,
+		},
+		{
+			Num:         "4",
+			Name:        "Analyze",
+			Icon:        "📊",
+			Description: "Analyze disk space usage and locate large files",
+			Cmd:         analyzeCmd,
+		},
+		{
+			Num:         "5",
+			Name:        "Status",
+			Icon:        "🩺",
+			Description: "Check system health, disk metrics, and security overview",
+			Cmd:         statusCmd,
+		},
+		{
+			Num:         "6",
+			Name:        "Purge",
+			Icon:        "🔥",
+			Description: "Deep purge Xcode, Docker, Homebrew, and dev caches",
+			Cmd:         purgeCmd,
+		},
+		{
+			Num:         "7",
+			Name:        "Dedup",
+			Icon:        "🔍",
+			Description: "Find and safely trash duplicate files with 3-phase xxhash",
+			Cmd:         dedupCmd,
+		},
+		{
+			Num:         "8",
+			Name:        "Startup",
+			Icon:        "🚀",
+			Description: "Manage persistent background services and zombie daemons",
+			Cmd:         startupCmd,
+		},
+		{
+			Num:         "9",
+			Name:        "Privacy",
+			Icon:        "🛡️ ",
+			Description: "Wipe recent items, clipboard history, and crash reports",
+			Cmd:         privacyCmd,
+		},
+		{
+			Num:         "0",
+			Name:        "Doctor",
+			Icon:        "🩺",
+			Description: "Run full health diagnostics with actionable repairs",
+			Cmd:         doctorCmd,
+		},
+	}
+
+	m := mainmenu.New(version, mSys, menuItems)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	finalModel, err := p.Run()
 	if err != nil {
-		// Fallback to displaying help if terminal raw mode cannot be acquired
 		return parentCmd.Help()
 	}
-	defer restoreTerminal()
 
-	menuItems := []menuItem{
-		{
-			num:         "1",
-			name:        "Clean",
-			icon:        "🧹",
-			description: "Clean system caches, app logs, and temporary junk",
-			cmd:         cleanCmd,
-		},
-		{
-			num:         "2",
-			name:        "Uninstall",
-			icon:        "🗑️ ",
-			description: "Safely remove applications and all associated leftovers",
-			cmd:         uninstallCmd,
-		},
-		{
-			num:         "3",
-			name:        "Optimize",
-			icon:        "⚡",
-			description: "Rebuild caches, flush DNS, and run system optimizations",
-			cmd:         optimizeCmd,
-		},
-		{
-			num:         "4",
-			name:        "Analyze",
-			icon:        "📊",
-			description: "Analyze disk space usage and locate large files",
-			cmd:         analyzeCmd,
-		},
-		{
-			num:         "5",
-			name:        "Status",
-			icon:        "🩺",
-			description: "Check system health, disk metrics, and security overview",
-			cmd:         statusCmd,
-		},
-		{
-			num:         "6",
-			name:        "Purge",
-			icon:        "🔥",
-			description: "Deep purge Xcode, Docker, Homebrew, and dev caches",
-			cmd:         purgeCmd,
-		},
+	finalM, ok := finalModel.(mainmenu.Model)
+	if !ok || finalM.SelectedCmd() == nil {
+		return nil
 	}
 
-	sys := collectSystemSummary()
-	selectedIndex := 0
-
-	// Lipgloss styles
-	bannerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")) // bright cyan
-
-	versionBadgeStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("244"))
-
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("63")). // purple/indigo
-		Padding(0, 1)
-
-	labelStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("245"))
-
-	valueStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("255"))
-
-	sepStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240"))
-
-	menuTitleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("255"))
-
-	selectedItemStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("51")).
-		Background(lipgloss.Color("236")).
-		Padding(0, 1)
-
-	normalItemStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
-		Padding(0, 1)
-
-	itemDescStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("244"))
-
-	footerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("243"))
-
-	const asciiBanner = `   ____ ___ _____ _____ 
-  / ___|_ _|  ___|_   _|
-  \___ \ | || |_    | |  
-   ___) || ||  _|   | |  
-  |____/|___|_|     |_|  `
-
-	render := func() {
-		var b strings.Builder
-
-		// Clear screen and home cursor
-		b.WriteString("\033[H\033[2J")
-
-		// Banner
-		b.WriteString(bannerStyle.Render(asciiBanner))
-		b.WriteString("\n")
-		b.WriteString(versionBadgeStyle.Render(fmt.Sprintf("  v%s • Terminal-first macOS maintenance toolkit", version)))
-		b.WriteString("\n\n")
-
-		// Disk color calculation
-		var diskColor lipgloss.Color
-		switch {
-		case sys.diskPct >= 90.0:
-			diskColor = lipgloss.Color("196") // Red
-		case sys.diskPct >= 80.0:
-			diskColor = lipgloss.Color("214") // Orange/Amber
-		default:
-			diskColor = lipgloss.Color("42") // Green
-		}
-		diskUsageStyle := lipgloss.NewStyle().Bold(true).Foreground(diskColor)
-
-		// System summary line
-		summaryContent := fmt.Sprintf(
-			"%s %s  %s  %s %s  %s  %s %s / %s (%s)  %s  %s %s",
-			labelStyle.Render(" Host:"),
-			valueStyle.Render(sys.hostname),
-			sepStyle.Render("│"),
-			labelStyle.Render("OS:"),
-			valueStyle.Render(sys.osVersion),
-			sepStyle.Render("│"),
-			labelStyle.Render("Disk:"),
-			valueStyle.Render(sys.diskFree),
-			valueStyle.Render(sys.diskTotal),
-			diskUsageStyle.Render(fmt.Sprintf("%.1f%% used", sys.diskPct)),
-			sepStyle.Render("│"),
-			labelStyle.Render("User:"),
-			valueStyle.Render(sys.username),
-		)
-		b.WriteString(boxStyle.Render(summaryContent))
-		b.WriteString("\n\n")
-
-		// Menu items
-		b.WriteString(menuTitleStyle.Render("  Shortcut Commands:"))
-		b.WriteString("\n\n")
-
-		for i, itm := range menuItems {
-			if i == selectedIndex {
-				cursor := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51")).Render("❯")
-				num := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render(fmt.Sprintf("[%s]", itm.num))
-				name := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("255")).Render(fmt.Sprintf("%s %-10s", itm.icon, itm.name))
-				desc := lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Render(itm.description)
-				line := fmt.Sprintf(" %s %s %s  %s", cursor, num, name, desc)
-				b.WriteString(selectedItemStyle.Render(line))
-			} else {
-				cursor := " "
-				num := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("241")).Render(fmt.Sprintf("[%s]", itm.num))
-				name := lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Render(fmt.Sprintf("%s %-10s", itm.icon, itm.name))
-				desc := itemDescStyle.Render(itm.description)
-				line := fmt.Sprintf(" %s %s %s  %s", cursor, num, name, desc)
-				b.WriteString(normalItemStyle.Render(line))
-			}
-			b.WriteString("\n")
-		}
-
-		b.WriteString("\n")
-		b.WriteString(footerStyle.Render("  ↑/k Up  •  ↓/j Down  •  1-6 Quick Jump  •  ↵ Enter Launch  •  q/Esc Quit"))
-		b.WriteString("\n")
-
-		fmt.Print(b.String())
+	chosen := finalM.SelectedCmd()
+	fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render(fmt.Sprintf("▸ Sift: Running sf %s...\n", chosen.Name())))
+	if chosen.RunE != nil {
+		return chosen.RunE(chosen, []string{})
 	}
-
-	buf := make([]byte, 16)
-	for {
-		render()
-
-		n, err := os.Stdin.Read(buf)
-		if err != nil {
-			return err
-		}
-		if n == 0 {
-			continue
-		}
-
-		// Ctrl+C (0x03)
-		if n == 1 && buf[0] == 3 {
-			restoreTerminal()
-			fmt.Println()
-			return nil
-		}
-
-		// Enter (CR or LF)
-		if (n == 1 && (buf[0] == '\r' || buf[0] == '\n')) || (n == 2 && buf[0] == '\r' && buf[1] == '\n') {
-			restoreTerminal()
-			fmt.Print("\033[H\033[2J") // Clear screen
-			selected := menuItems[selectedIndex]
-			fmt.Println(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render(fmt.Sprintf("▸ Sift: Running %s %s...\n", selected.icon, selected.name)))
-			if selected.cmd != nil {
-				if selected.cmd.RunE != nil {
-					return selected.cmd.RunE(selected.cmd, []string{})
-				}
-				if selected.cmd.Run != nil {
-					selected.cmd.Run(selected.cmd, []string{})
-					return nil
-				}
-			}
-			return nil
-		}
-
-		// Quit keys: 'q', 'Q', Escape (0x1b when single byte)
-		if (n == 1 && (buf[0] == 'q' || buf[0] == 'Q')) || (n == 1 && buf[0] == 27) {
-			restoreTerminal()
-			fmt.Println()
-			return nil
-		}
-
-		// Vim navigation: 'k' / 'K' (up), 'j' / 'J' (down)
-		if n == 1 && (buf[0] == 'k' || buf[0] == 'K') {
-			selectedIndex = (selectedIndex - 1 + len(menuItems)) % len(menuItems)
-			continue
-		}
-		if n == 1 && (buf[0] == 'j' || buf[0] == 'J') {
-			selectedIndex = (selectedIndex + 1) % len(menuItems)
-			continue
-		}
-
-		// Number shortcuts: '1' through '6'
-		if n == 1 && buf[0] >= '1' && buf[0] <= '6' {
-			target := int(buf[0] - '1')
-			if target >= 0 && target < len(menuItems) {
-				selectedIndex = target
-			}
-			continue
-		}
-
-		// ANSI escape sequences (Arrow keys)
-		if n >= 3 && buf[0] == 27 && (buf[1] == '[' || buf[1] == 'O') {
-			switch buf[2] {
-			case 'A': // Up arrow
-				selectedIndex = (selectedIndex - 1 + len(menuItems)) % len(menuItems)
-			case 'B': // Down arrow
-				selectedIndex = (selectedIndex + 1) % len(menuItems)
-			}
-			continue
-		}
+	if chosen.Run != nil {
+		chosen.Run(chosen, []string{})
 	}
+	return nil
 }
