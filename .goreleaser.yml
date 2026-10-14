@@ -51,6 +51,7 @@ release:
     owner: SadeepaNHerath
     name: Sift
   prerelease: auto
+  replace_existing_artifacts: true
   header: |
     ## Sift (sf) {{ .Tag }}
     Terminal-first macOS maintenance, cleanup, and disk analysis toolkit.
