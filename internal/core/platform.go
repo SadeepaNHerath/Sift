@@ -156,4 +156,3 @@ func IsTTY() bool {
 func IsRunningAsSudo() bool {
 	return os.Geteuid() == 0
 }
-

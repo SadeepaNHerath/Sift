@@ -222,4 +222,3 @@ func TestEnable_CreatesBackupOfExistingFile(t *testing.T) {
 		t.Errorf("backup content mismatch: expected %q, got %q", initialContent, string(bakContent))
 	}
 }
-

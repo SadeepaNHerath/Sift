@@ -65,4 +65,3 @@ func TestIsRunningAsSudo_NotSpoofable(t *testing.T) {
 		t.Fatalf("IsRunningAsSudo() returned true for non-root EUID %d when SUDO_USER=root", os.Geteuid())
 	}
 }
-

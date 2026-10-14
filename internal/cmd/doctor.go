@@ -143,4 +143,3 @@ func escapeWorkflowCommand(s string) string {
 	s = strings.ReplaceAll(s, "\n", "%0A")
 	return s
 }
-
