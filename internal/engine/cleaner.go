@@ -344,7 +344,7 @@ func ScanExternalVolume(volPath string, whitelist *core.Whitelist) (*CleanCatego
 // CleanCategoryExecute cleans all items in a category.
 // If dryRun is true, validates and tallies what would be cleaned without modifying disk.
 // Every deletion must pass core.ValidatePathForDeletion and use core.SafeRemove (or core.MoveToTrash).
-func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger) (*core.RemovalReport, error) {
+func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger, dockerPrune ...bool) (*core.RemovalReport, error) {
 	if cat == nil {
 		return nil, errors.New("nil category provided to CleanCategoryExecute")
 	}
@@ -439,7 +439,8 @@ func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger) 
 	}
 
 	// Trigger companion tool-level cleanup actions
-	executeCompanionPrune(cat.ID)
+	allowDocker := len(dockerPrune) > 0 && dockerPrune[0]
+	executeCompanionPrune(cat.ID, allowDocker)
 
 	if logger != nil {
 		logger.LogOperation("clean", cat.ID, "completed",
@@ -451,7 +452,8 @@ func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger) 
 }
 
 // executeCompanionPrune runs tool-specific CLI prune routines if those tools are installed.
-func executeCompanionPrune(catID string) {
+// Docker prune is executed only if explicitly authorized via allowDocker.
+func executeCompanionPrune(catID string, allowDocker bool) {
 	switch catID {
 	case CatHomebrew:
 		if _, err := exec.LookPath("brew"); err == nil {
@@ -462,8 +464,10 @@ func executeCompanionPrune(catID string) {
 			_, _ = core.RunCommandWithTimeout(15*time.Second, "xcrun", "simctl", "delete", "unavailable")
 		}
 	case CatVirtualization:
-		if _, err := exec.LookPath("docker"); err == nil {
-			_, _ = core.RunCommandWithTimeout(15*time.Second, "docker", "system", "prune", "-f")
+		if allowDocker {
+			if _, err := exec.LookPath("docker"); err == nil {
+				_, _ = core.RunCommandWithTimeout(15*time.Second, "docker", "system", "prune", "-f")
+			}
 		}
 	}
 }

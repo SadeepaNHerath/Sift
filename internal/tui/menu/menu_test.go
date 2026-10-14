@@ -233,7 +233,7 @@ func TestMenuViewOutput(t *testing.T) {
 	if !strings.Contains(view, "🔒") {
 		t.Fatalf("view should contain lock for protected item")
 	}
-	if !strings.Contains(view, "50.0 MB") || !strings.Contains(view, "5.0 GB") {
+	if !strings.Contains(view, "50 MB") || !strings.Contains(view, "5 GB") {
 		t.Fatalf("view should contain formatted sizes")
 	}
 	if !strings.Contains(view, "Developer") {
@@ -248,9 +248,9 @@ func TestFormatBytes(t *testing.T) {
 	}{
 		{0, "0 B"},
 		{500, "500 B"},
-		{1024, "1.0 KB"},
-		{1024 * 1024 * 5, "5.0 MB"},
-		{1024 * 1024 * 1024 * 3, "3.0 GB"},
+		{1024, "1 KB"},
+		{1024 * 1024 * 5, "5 MB"},
+		{1024 * 1024 * 1024 * 3, "3 GB"},
 	}
 
 	for _, tt := range tests {

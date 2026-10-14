@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,13 +17,14 @@ import (
 )
 
 var (
-	cleanDryRun    bool
-	cleanAll       bool
-	cleanYes       bool
-	cleanWhitelist bool
-	cleanExternal  string
-	cleanModels    bool
-	cleanAI        bool
+	cleanDryRun      bool
+	cleanAll         bool
+	cleanYes         bool
+	cleanWhitelist   bool
+	cleanExternal    string
+	cleanModels      bool
+	cleanAI          bool
+	cleanDockerPrune bool
 )
 
 func init() {
@@ -37,6 +39,7 @@ func init() {
 	cleanCmd.Flags().StringVarP(&cleanExternal, "external", "e", "", "Clean external volume junk files")
 	cleanCmd.Flags().BoolVar(&cleanModels, "models", false, "Clean local AI model weights and compiler caches")
 	cleanCmd.Flags().BoolVar(&cleanAI, "ai", false, "Alias for --models")
+	cleanCmd.Flags().BoolVar(&cleanDockerPrune, "docker-prune", false, "Prune stopped Docker containers and dangling images during virtualization cleanup")
 }
 
 // CategoryCleanResult tracks cleanup results per category for the summary screen.
@@ -128,7 +131,7 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return executeDryRunSummary(categories, logger)
 	}
 
-	return executeCleanSummary(categories, logger)
+	return executeCleanSummary(categories, logger, cleanDockerPrune)
 }
 
 // handleWhitelistDisplay prints current whitelist configuration.
@@ -158,7 +161,29 @@ func handleWhitelistDisplay() error {
 
 // handleExternalVolumeClean scans and cleans macOS junk on external volumes.
 func handleExternalVolumeClean(volPath string, dryRun, yes bool, wl *core.Whitelist) error {
-	cat, err := engine.ScanExternalVolume(volPath, wl)
+	normVol, err := core.NormalizePath(volPath)
+	if err != nil {
+		return fmt.Errorf("invalid external volume path: %w", err)
+	}
+
+	if normVol == "/" || core.IsSystemPath(normVol) {
+		return fmt.Errorf("refusing to target system root or protected path as external volume: %s", normVol)
+	}
+
+	// External volumes must reside under /Volumes/ (allow temporary test directories)
+	isTestDir := strings.HasPrefix(normVol, os.TempDir()) || strings.HasPrefix(normVol, "/private/var/folders")
+	if !strings.HasPrefix(normVol, "/Volumes/") && !isTestDir {
+		return fmt.Errorf("invalid external volume path %q: external volumes must reside under /Volumes/", volPath)
+	}
+
+	// Check if target resolves to system root or protected path (e.g., /Volumes/Macintosh HD -> /)
+	if target, err := filepath.EvalSymlinks(normVol); err == nil {
+		if target == "/" || core.IsSystemPath(target) {
+			return fmt.Errorf("invalid external volume path %q: targets system root or protected path (%s)", volPath, target)
+		}
+	}
+
+	cat, err := engine.ScanExternalVolume(normVol, wl)
 	if err != nil {
 		return err
 	}
@@ -170,7 +195,7 @@ func handleExternalVolumeClean(volPath string, dryRun, yes bool, wl *core.Whitel
 	}
 
 	if !yes && core.IsTTY() {
-		fmt.Printf("Clean %d junk files (%s) from %s? [y/N]: ", len(cat.Items), core.FormatBytes(cat.TotalSize), volPath)
+		fmt.Printf("Clean %d junk files (%s) from %s? [y/N]: ", len(cat.Items), core.FormatBytes(cat.TotalSize), normVol)
 		reader := bufio.NewReader(os.Stdin)
 		resp, _ := reader.ReadString('\n')
 		resp = strings.TrimSpace(strings.ToLower(resp))
@@ -308,7 +333,7 @@ func executeDryRunSummary(categories []*engine.CleanCategory, logger *core.Logge
 }
 
 // executeCleanSummary cleans the categories and renders a Mole-style one-screen summary.
-func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger) error {
+func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger, dockerPrune ...bool) error {
 	headerBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#50FA7B")).
@@ -333,7 +358,7 @@ func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger
 		meta, _ := engine.GetCategoryMeta(cat.ID)
 
 		// Print visual spinner / active category marker
-		rep, err := engine.CleanCategoryExecute(cat, false, logger)
+		rep, err := engine.CleanCategoryExecute(cat, false, logger, dockerPrune...)
 		if err != nil {
 			failMark := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555")).Render("✗")
 			line := fmt.Sprintf("  %s %-28s %-12s %15s", failMark, fmt.Sprintf("%s %s", meta.Icon, cat.Name), "Error", "0 B")

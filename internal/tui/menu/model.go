@@ -1,11 +1,12 @@
 package menu
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/SadeepaNHerath/Spacefold/internal/core"
 )
 
 // Item represents a single selectable row in the menu.
@@ -263,23 +264,7 @@ func (m *Model) adjustOffset() {
 	}
 }
 
-// FormatBytes formats byte counts into human-readable strings (B, KB, MB, GB, TB).
+// FormatBytes formats byte counts into human-readable strings via core.FormatBytes.
 func FormatBytes(b int64) string {
-	const unit = 1024
-	if b < 0 {
-		return "0 B"
-	}
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	units := []string{"KB", "MB", "GB", "TB", "PB"}
-	if exp >= len(units) {
-		exp = len(units) - 1
-	}
-	return fmt.Sprintf("%.1f %s", float64(b)/float64(div), units[exp])
+	return core.FormatBytes(b)
 }

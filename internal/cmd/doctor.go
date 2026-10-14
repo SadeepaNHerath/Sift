@@ -114,10 +114,12 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	// CI Mode Output
 	if doctorCI {
 		for _, check := range report.Results {
+			title := escapeWorkflowCommand(check.Name)
+			msg := escapeWorkflowCommand(fmt.Sprintf("%s - %s", check.Summary, check.Details))
 			if check.Severity == engine.SeverityCritical {
-				fmt.Fprintf(out, "::error title=%s::%s - %s\n", check.Name, check.Summary, check.Details)
+				fmt.Fprintf(out, "::error title=%s::%s\n", title, msg)
 			} else if check.Severity == engine.SeverityWarning {
-				fmt.Fprintf(out, "::warning title=%s::%s - %s\n", check.Name, check.Summary, check.Details)
+				fmt.Fprintf(out, "::warning title=%s::%s\n", title, msg)
 			}
 		}
 	}
@@ -134,3 +136,11 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+
+func escapeWorkflowCommand(s string) string {
+	s = strings.ReplaceAll(s, "%", "%25")
+	s = strings.ReplaceAll(s, "\r", "%0D")
+	s = strings.ReplaceAll(s, "\n", "%0A")
+	return s
+}
+

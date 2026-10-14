@@ -90,6 +90,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(out, "\n🚀 A new version of Sift is available: %s → %s\n", currentVer, rel.TagName)
 	fmt.Fprintf(out, "Release page: %s\n\n", rel.HTMLURL)
 
+	if updateCheckOnly {
+		return nil
+	}
+
 	fmt.Fprintln(out, "To upgrade to the latest release, run:")
 	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("51")).Render(
 		"  curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Spacefold/main/install.sh | bash",
