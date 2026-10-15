@@ -213,7 +213,6 @@ func FindAppResourcesWithRoots(app AppInfo, roots []DiscoveryRoot) ([]Attributed
 	var results []AttributedResource
 	seenPaths := make(map[string]bool)
 
-	// 1. Check the app bundle itself if it exists and passes safety validation
 	if app.Path != "" {
 		if fi, err := os.Lstat(app.Path); err == nil {
 			if valErr := core.ValidatePathForDeletion(app.Path); valErr == nil {
@@ -243,7 +242,6 @@ func FindAppResourcesWithRoots(app AppInfo, roots []DiscoveryRoot) ([]Attributed
 		}
 	}
 
-	// 2. Scan discovery roots
 	for _, root := range roots {
 		entries, err := os.ReadDir(root.Path)
 		if err != nil {
@@ -313,7 +311,6 @@ func evaluateCandidateSignals(path, name string, category ResourceCategory, app 
 	appName := strings.ToLower(strings.TrimSpace(app.Name))
 	normApp := app.NormalizedName()
 
-	// 1. ExactBundleID
 	if bundleID != "" {
 		if lowerName == bundleID ||
 			lowerName == bundleID+".plist" ||
@@ -323,7 +320,6 @@ func evaluateCandidateSignals(path, name string, category ResourceCategory, app 
 		}
 	}
 
-	// 2. ContainerBundleID
 	if category == CategoryContainer || category == CategoryGroupContainer {
 		if bundleID != "" {
 			if lowerName == bundleID ||
@@ -334,7 +330,6 @@ func evaluateCandidateSignals(path, name string, category ResourceCategory, app 
 		}
 	}
 
-	// 3. SavedStateName
 	if category == CategorySavedState || strings.HasSuffix(lowerName, ".savedstate") {
 		if bundleID != "" && strings.HasPrefix(lowerName, bundleID) {
 			signals = append(signals, SignalSavedStateName)
@@ -346,14 +341,12 @@ func evaluateCandidateSignals(path, name string, category ResourceCategory, app 
 		}
 	}
 
-	// 4. PkgReceipt
 	if category == CategoryReceipt || strings.Contains(path, "/receipts") {
 		if bundleID != "" && strings.HasPrefix(lowerName, bundleID) {
 			signals = append(signals, SignalPkgReceipt)
 		}
 	}
 
-	// 5. LaunchdProgramPath & PlistContentRef
 	if category == CategoryLaunchAgent || category == CategoryLaunchDaemon || strings.HasSuffix(lowerName, ".plist") {
 		if strings.HasSuffix(lowerName, ".plist") {
 			if launchdPointsToApp(path, app) {
@@ -365,21 +358,18 @@ func evaluateCandidateSignals(path, name string, category ResourceCategory, app 
 		}
 	}
 
-	// 6. TeamIDMatch
 	if app.TeamID != "" && (category == CategoryLaunchDaemon || category == CategoryLaunchAgent || !isDir(path)) {
 		if checkBinaryTeamID(path, app.TeamID) {
 			signals = append(signals, SignalTeamIDMatch)
 		}
 	}
 
-	// 7. SpotlightBundleID
 	if bundleID != "" {
 		if checkSpotlightBundleID(path, bundleID) {
 			signals = append(signals, SignalSpotlightBundleID)
 		}
 	}
 
-	// 8. VendorPrefix
 	if vendorPrefix != "" && len(vendorPrefix) >= 4 {
 		if lowerName == vendorPrefix ||
 			strings.HasPrefix(lowerName, vendorPrefix+".") ||
@@ -390,7 +380,6 @@ func evaluateCandidateSignals(path, name string, category ResourceCategory, app 
 		}
 	}
 
-	// 9. AppNameInPath
 	if normApp != "" && len(normApp) >= 3 {
 		lowerPath := strings.ToLower(path)
 		normPath := strings.ReplaceAll(lowerPath, " ", "")

@@ -149,15 +149,12 @@ func TestFindOrphanedResourcesInDirs(t *testing.T) {
 		},
 	}
 
-	// 1. Installed app leftover: should NOT be an orphan
 	activePref := filepath.Join(prefsDir, "com.active.editor.plist")
 	_ = os.WriteFile(activePref, []byte("plist"), 0644)
 
-	// 2. System com.apple leftover: should NOT be an orphan
 	applePref := filepath.Join(prefsDir, "com.apple.finder.plist")
 	_ = os.WriteFile(applePref, []byte("apple"), 0644)
 
-	// 3. True orphan leftover from uninstalled app
 	orphanPref := filepath.Join(prefsDir, "com.uninstalled.legacyapp.plist")
 	_ = os.WriteFile(orphanPref, []byte("legacy"), 0644)
 

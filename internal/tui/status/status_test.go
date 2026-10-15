@@ -69,7 +69,6 @@ func TestModelUpdateKeys(t *testing.T) {
 	m := NewModel()
 	m.Metrics = sampleMetrics()
 
-	// 1. Test 'k' toggles cat mascot
 	initialCat := m.ShowCat
 	updatedModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	m = updatedModel.(Model)
@@ -77,7 +76,6 @@ func TestModelUpdateKeys(t *testing.T) {
 		t.Errorf("expected ShowCat to toggle from %v, got %v", initialCat, m.ShowCat)
 	}
 
-	// 2. Test 'c' cycles CPU core limit
 	m.CoreLimit = 2
 	updatedModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
 	m = updatedModel.(Model)
@@ -103,7 +101,6 @@ func TestModelUpdateKeys(t *testing.T) {
 		t.Errorf("expected CoreLimit to cycle back to 2, got %d", m.CoreLimit)
 	}
 
-	// 3. Test 'q' triggers quit
 	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	m = updatedModel.(Model)
 	if !m.Quitting {

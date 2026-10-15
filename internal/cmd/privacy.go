@@ -26,10 +26,10 @@ var (
 
 var privacyCmd = &cobra.Command{
 	Use:   "privacy",
-	Short: "Forensic history wiper: recent items, clipboard, crash logs, and browser storage",
-	Long: `Securely wipe forensic history artifacts from macOS:
+	Short: "Clear recent items, clipboard, crash logs, and browser local storage",
+	Long: `Clear history and session traces from macOS:
 1. macOS Recent Items (.sfl3 / LSSharedFileList) and QuickLook thumbnail databases.
-2. Terminal and system pasteboard buffers (clears copied secrets / tokens).
+2. Terminal and system pasteboard buffers (clears copied secrets and tokens).
 3. System diagnostic reports and crash logs (/Library/Logs/DiagnosticReports).
 4. Safari, Chrome, and Brave local storage databases (strictly preserving bookmarks, logins, and passwords).`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -78,7 +78,6 @@ func runPrivacy(cmd *cobra.Command, args []string) error {
 		targets = filtered
 	}
 
-	// 1. JSON mode
 	if privacyJSON {
 		encoder := json.NewEncoder(out)
 		encoder.SetIndent("", "  ")
@@ -90,12 +89,10 @@ func runPrivacy(cmd *cobra.Command, args []string) error {
 		defer logger.Close()
 	}
 
-	// 2. Dry run preview
 	if privacyDryRun {
 		return renderPrivacyDryRun(cmd, targets, logger)
 	}
 
-	// 3. Interactive multi-select mode if attached to TTY
 	if !privacyYes && core.IsTTY() && !privacyClipboardOnly && !privacyRecentOnly && !privacyDiagnosticOnly && !privacyBrowserOnly {
 		selectedTargets, err := runInteractivePrivacySelect(targets)
 		if err != nil {
@@ -110,7 +107,6 @@ func runPrivacy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("privacy wiping requires confirmation: pass --yes/-y to execute non-interactively, or --dry-run to preview")
 	}
 
-	// 4. Execute wiping
 	report, err := engine.WipePrivacyTargets(targets, false, logger)
 	if err != nil {
 		return fmt.Errorf("privacy wipe failed: %w", err)
@@ -175,7 +171,7 @@ func renderPrivacyDryRun(cmd *cobra.Command, targets []engine.PrivacyTarget, log
 	sizeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42"))
 
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, titleStyle.Render("▸ PRIVACY DRY RUN PREVIEW — No files or clipboard will be modified"))
+	fmt.Fprintln(out, titleStyle.Render("▸ PRIVACY DRY RUN PREVIEW: No files or clipboard will be modified"))
 	fmt.Fprintln(out, strings.Repeat("─", 72))
 
 	for _, t := range targets {
@@ -217,7 +213,7 @@ func renderPrivacyExecutionSummary(cmd *cobra.Command, report *core.RemovalRepor
 
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, headerStyle.Render(fmt.Sprintf("✔ Privacy wipe completed! Reclaimed %s", sizeStyle.Render(core.FormatBytes(report.TotalBytes)))))
-	fmt.Fprintf(out, "  Wiped: %d forensic artifacts\n", len(report.Removed))
+	fmt.Fprintf(out, "  Cleared: %d items\n", len(report.Removed))
 
 	if len(report.Failed) > 0 {
 		fmt.Fprintf(out, "  %s %d items could not be removed:\n", errStyle.Render("Errors:"), len(report.Failed))

@@ -62,7 +62,6 @@ func FindOrphanedResources(installedApps []AppInfo) ([]AttributedResource, error
 
 // FindOrphanedResourcesInDirs scans custom directories for orphaned application resources.
 func FindOrphanedResourcesInDirs(installedApps []AppInfo, dirs []OrphanSearchDir) ([]AttributedResource, error) {
-	// 1. Build index of installed applications
 	installedIDs := make(map[string]bool)
 	installedVendors := make(map[string]bool)
 	installedNames := make(map[string]bool)
@@ -232,7 +231,6 @@ func shouldSuppressCandidate(
 	installedIDs, installedVendors, installedNames map[string]bool,
 	activeFamilies map[int]bool,
 ) bool {
-	// 1. System prefixes check
 	if inferredID != "" {
 		for _, sys := range SystemOrphanPrefixes {
 			if strings.HasPrefix(inferredID, sys) || inferredID == strings.TrimSuffix(sys, ".") {
@@ -241,7 +239,6 @@ func shouldSuppressCandidate(
 		}
 	}
 
-	// 2. Family suppression check
 	if inferredID != "" {
 		vendor := ExtractVendorPrefix(inferredID)
 		for famIdx := range activeFamilies {
@@ -254,12 +251,10 @@ func shouldSuppressCandidate(
 		}
 	}
 
-	// 3. Exact installed bundle ID check
 	if inferredID != "" && installedIDs[inferredID] {
 		return true
 	}
 
-	// 4. Sub-bundle or parent bundle matching installed app
 	if inferredID != "" {
 		for installed := range installedIDs {
 			if inferredID == installed ||
@@ -270,14 +265,12 @@ func shouldSuppressCandidate(
 		}
 	}
 
-	// 5. Vendor match check
 	if inferredID != "" {
 		if vendor := ExtractVendorPrefix(inferredID); vendor != "" && installedVendors[vendor] {
 			return true
 		}
 	}
 
-	// 6. Name match check
 	if inferredName != "" {
 		normInferred := strings.ToLower(inferredName)
 		normInferred = strings.ReplaceAll(normInferred, " ", "")

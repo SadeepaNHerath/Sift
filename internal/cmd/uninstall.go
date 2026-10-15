@@ -47,7 +47,6 @@ func init() {
 func runUninstall(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 
-	// 1. Resolve target application
 	var targetApp *engine.AppInfo
 	var err error
 
@@ -58,7 +57,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		// Non-interactive check
 		if !core.IsTTY() {
 			return errors.New("application name is required in non-interactive mode. Usage: sf uninstall [app-name]")
 		}
@@ -73,7 +71,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 2. Protect macOS system components
 	if targetApp.IsApple || targetApp.Protected || core.IsProtectedBundleID(targetApp.BundleID) {
 		return fmt.Errorf("cannot uninstall protected macOS application %q (%s)", targetApp.Name, targetApp.BundleID)
 	}
@@ -87,7 +84,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(out, "Location:     %s\n\n", targetApp.Path)
 
-	// 3. Inspect user configuration files (.zshrc, .bashrc, .config)
 	configRefs := checkConfigReferences(*targetApp)
 	if len(configRefs) > 0 {
 		warnStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFB86C"))
@@ -104,7 +100,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(out)
 	}
 
-	// 4. Discover associated application resources
 	resources, err := engine.FindAppResources(*targetApp)
 	if err != nil {
 		return fmt.Errorf("failed to discover application resources: %w", err)
@@ -115,7 +110,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// 5. Partition resources by confidence and filter based on flags
 	var (
 		highItems   []engine.AttributedResource
 		mediumItems []engine.AttributedResource
@@ -136,13 +130,11 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 			lowItems = append(lowItems, res)
 		}
 
-		// Check personal data protection
 		if !flagData && isPersonalDataResource(res) {
 			skippedData = append(skippedData, res)
 			continue
 		}
 
-		// Check confidence inclusion
 		if res.Confidence == engine.ConfidenceHigh {
 			toRemove = append(toRemove, res)
 		} else if flagAll {
@@ -152,7 +144,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 6. Display Breakdown
 	renderBreakdown(out, highItems, mediumItems, lowItems, skippedData, skippedLow)
 
 	var totalBytes int64
@@ -162,7 +153,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(out, "\nTotal to remove: %d items (%s)\n", len(toRemove), core.FormatBytes(totalBytes))
 
-	// 7. Dry run check
 	if flagDryRun {
 		infoStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#8BE9FD"))
 		fmt.Fprintln(out, infoStyle.Render("\n[DRY RUN] No files were removed."))
@@ -174,7 +164,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// 8. Confirmation prompt
 	if !flagYes {
 		if !core.IsTTY() {
 			return errors.New("confirmation required. Use --yes / -y to proceed non-interactively")
@@ -189,7 +178,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 9. Execute uninstallation
 	logger, _ := core.NewLogger()
 	defer func() {
 		if logger != nil {
@@ -213,7 +201,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	var failedItems []string
 
 	for _, item := range toRemove {
-		// Bootout launchd job if removing launch agent / daemon
 		if item.Category == engine.CategoryLaunchAgent || item.Category == engine.CategoryLaunchDaemon {
 			_ = engine.BootoutLaunchd(item.Path)
 		}
@@ -245,7 +232,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	// 10. Summary
 	successStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#50FA7B"))
 	fmt.Fprintf(out, "\n%s Successfully uninstalled %s! Freed %s.\n",
 		successStyle.Render("✓"), targetApp.Name, core.FormatBytes(freedBytes))
@@ -278,28 +264,24 @@ func resolveAppByNameOrPath(term string) (*engine.AppInfo, error) {
 
 	lowerTerm := strings.ToLower(strings.TrimSpace(term))
 
-	// 1. Exact path match
 	for _, a := range apps {
 		if strings.EqualFold(a.Path, term) {
 			return &a, nil
 		}
 	}
 
-	// 2. Exact BundleID match
 	for _, a := range apps {
 		if strings.EqualFold(a.BundleID, lowerTerm) {
 			return &a, nil
 		}
 	}
 
-	// 3. Exact Name match
 	for _, a := range apps {
 		if strings.EqualFold(a.Name, lowerTerm) {
 			return &a, nil
 		}
 	}
 
-	// 4. Prefix or substring match
 	var matches []engine.AppInfo
 	for _, a := range apps {
 		lowerName := strings.ToLower(a.Name)

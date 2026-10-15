@@ -54,17 +54,14 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	isTTY := isStdoutTTYFunc()
 
-	// 1. Non-interactive or JSON output mode (auto-detected pipe or explicit --json)
 	if !isTTY || jsonMode {
 		if watchMode {
-			// Continuous stream: emit NDJSON (one line per JSON object)
 			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer cancel()
 
 			ticker := time.NewTicker(interval)
 			defer ticker.Stop()
 
-			// Emit initial sample immediately
 			if err := outputSingleJSON(cmd, false); err != nil {
 				return err
 			}
@@ -81,11 +78,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Single-shot execution: output formatted JSON
 		return outputSingleJSON(cmd, true)
 	}
 
-	// 2. Interactive terminal mode: launch full Bubble Tea dashboard
 	model := status.NewModel()
 	model.Interval = interval
 

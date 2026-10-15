@@ -184,6 +184,8 @@ Find and remove user caches, application logs, diagnostic reports, and temporary
 sf clean                    # Interactive scan and cleanup
 sf clean --dry-run          # Preview items to be cleaned without deleting
 sf clean --all              # Clean all safe system and user cache targets
+sf clean --trash            # Empty ~/.Trash permanently
+sf clean --snapshots        # Thin APFS Time Machine local snapshots
 sf clean --user             # Target only ~/Library caches
 ```
 
@@ -217,16 +219,17 @@ sf optimize --ram           # Release inactive system memory
 #### `sf analyze [path]`
 Multithreaded directory scanner that calculates disk usage, identifies large files, and surfaces directory hogs.
 ```bash
-sf analyze                  # Analyze root disk volume
-sf analyze ~ --min-size 1GB # Show directories containing files > 1 GB
-sf analyze /Users/Shared --depth 3
+sf analyze                  # Analyze current directory or root volume
+sf analyze --system-data    # Break down macOS System Data contributors (Xcode, Docker, caches, Trash)
+sf analyze ~ --top 10       # Show top 10 largest files
 ```
 
 #### `sf status`
-Shows system health diagnostics, disk usage matching macOS Finder, memory breakdown, thermal state, and SIP status.
+Shows system health diagnostics, disk usage matching macOS Finder, Trash capacity, memory breakdown, thermal state, and SIP status.
 ```bash
 sf status
 sf status --json            # Output machine-readable JSON format
+sf status --watch           # Continuously monitor system metrics
 ```
 
 #### `sf purge`

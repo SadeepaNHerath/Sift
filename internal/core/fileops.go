@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -337,6 +338,85 @@ func getTrashDir() string {
 		home, _ = os.UserHomeDir()
 	}
 	return filepath.Join(home, ".Trash")
+}
+
+// GetTrashDir returns the ~/.Trash path for the current user.
+func GetTrashDir() string {
+	return getTrashDir()
+}
+
+// GetTrashSize computes the item count and total byte size of the user's ~/.Trash folder.
+func GetTrashSize() (int, int64, error) {
+	trashDir := getTrashDir()
+	entries, err := os.ReadDir(trashDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, 0, nil
+		}
+		// If direct directory read is restricted by macOS TCC / FDA, fallback to Finder AppleScript
+		if os.IsPermission(err) || strings.Contains(err.Error(), "operation not permitted") {
+			cmd := exec.Command("osascript", "-e", `tell application "Finder" to count every item of trash`)
+			if out, oErr := cmd.Output(); oErr == nil {
+				cntStr := strings.TrimSpace(string(out))
+				if cnt, pErr := strconv.Atoi(cntStr); pErr == nil {
+					return cnt, 0, nil
+				}
+			}
+			return 0, 0, nil
+		}
+		return 0, 0, err
+	}
+
+	var count int
+	var total int64
+	for _, e := range entries {
+		count++
+		child := filepath.Join(trashDir, e.Name())
+		if sz, szErr := FileSize(child); szErr == nil {
+			total += sz
+		}
+	}
+	return count, total, nil
+}
+
+// EmptyTrash permanently removes all items inside the user's ~/.Trash folder.
+func EmptyTrash() (int, int64, error) {
+	trashDir := getTrashDir()
+	entries, err := os.ReadDir(trashDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, 0, nil
+		}
+		// Fallback to Finder AppleScript if direct filesystem operations are restricted
+		if os.IsPermission(err) || strings.Contains(err.Error(), "operation not permitted") {
+			cmd := exec.Command("osascript", "-e", `tell application "Finder" to empty trash without warnings`)
+			if runErr := cmd.Run(); runErr != nil {
+				return 0, 0, runErr
+			}
+			return 1, 0, nil
+		}
+		return 0, 0, err
+	}
+
+	var removed int
+	var freed int64
+	var errs []string
+
+	for _, e := range entries {
+		child := filepath.Join(trashDir, e.Name())
+		sz, _ := FileSize(child)
+		if rmErr := os.RemoveAll(child); rmErr != nil {
+			errs = append(errs, rmErr.Error())
+		} else {
+			removed++
+			freed += sz
+		}
+	}
+
+	if len(errs) > 0 {
+		return removed, freed, fmt.Errorf("failed to remove %d items: %s", len(errs), strings.Join(errs, "; "))
+	}
+	return removed, freed, nil
 }
 
 // parseTrashDestination parses the moved destination path from /usr/bin/trash -v output.

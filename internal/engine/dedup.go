@@ -55,10 +55,7 @@ func DefaultDedupOptions() DedupOptions {
 	}
 }
 
-// FindDuplicates executes the 3-phase duplicate search across specified search roots.
-// Phase 1: Group files by byte size.
-// Phase 2: Sparse probing via xxhash on first 4KB, mid 4KB, and last 4KB.
-// Phase 3: Full xxhash verification on colliding candidates.
+// FindDuplicates executes duplicate search across specified search roots using byte size bucketing, sparse probing, and cryptographic hash verification.
 func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error) {
 	if len(roots) == 0 {
 		home := core.GetHomeDir()
@@ -74,9 +71,6 @@ func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error)
 		excludeMap[strings.ToLower(ex)] = true
 	}
 
-	// -------------------------------------------------------------
-	// Phase 1: Group files by exact byte size
-	// -------------------------------------------------------------
 	sizeBuckets := make(map[int64][]DuplicateFile)
 
 	for _, root := range roots {
@@ -128,7 +122,6 @@ func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error)
 		})
 	}
 
-	// Filter Phase 1 buckets: keep only buckets with >= 2 candidates
 	var phase2Candidates [][]DuplicateFile
 	for _, files := range sizeBuckets {
 		if len(files) >= 2 {
@@ -136,9 +129,6 @@ func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error)
 		}
 	}
 
-	// -------------------------------------------------------------
-	// Phase 2: Sparse probing via xxhash (first 4KB + mid 4KB + last 4KB)
-	// -------------------------------------------------------------
 	var phase3Candidates [][]DuplicateFile
 
 	for _, bucket := range phase2Candidates {
@@ -159,9 +149,6 @@ func FindDuplicates(roots []string, opts DedupOptions) ([]DuplicateGroup, error)
 		}
 	}
 
-	// -------------------------------------------------------------
-	// Phase 3: Full SHA-256 verification on collisions (collision-proof)
-	// -------------------------------------------------------------
 	fullBuckets := make(map[string][]DuplicateFile)
 
 	for _, bucket := range phase3Candidates {
@@ -246,13 +233,11 @@ func computeSparseHash(path string, size int64) (uint64, error) {
 
 	buf := make([]byte, chunkSize)
 
-	// 1. First 4 KB
 	if _, err := io.ReadFull(f, buf); err != nil {
 		return 0, err
 	}
 	_, _ = hasher.Write(buf)
 
-	// 2. Middle 4 KB
 	midOffset := (size - chunkSize) / 2
 	if _, err := f.Seek(midOffset, io.SeekStart); err != nil {
 		return 0, err
@@ -262,7 +247,6 @@ func computeSparseHash(path string, size int64) (uint64, error) {
 	}
 	_, _ = hasher.Write(buf)
 
-	// 3. Last 4 KB
 	lastOffset := size - chunkSize
 	if _, err := f.Seek(lastOffset, io.SeekStart); err != nil {
 		return 0, err

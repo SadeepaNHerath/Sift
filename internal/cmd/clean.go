@@ -25,6 +25,8 @@ var (
 	cleanModels      bool
 	cleanAI          bool
 	cleanDockerPrune bool
+	cleanTrash       bool
+	cleanSnapshots   bool
 )
 
 func init() {
@@ -40,6 +42,8 @@ func init() {
 	cleanCmd.Flags().BoolVar(&cleanModels, "models", false, "Clean local AI model weights and compiler caches")
 	cleanCmd.Flags().BoolVar(&cleanAI, "ai", false, "Alias for --models")
 	cleanCmd.Flags().BoolVar(&cleanDockerPrune, "docker-prune", false, "Prune stopped Docker containers and dangling images during virtualization cleanup")
+	cleanCmd.Flags().BoolVarP(&cleanTrash, "trash", "t", false, "Empty ~/.Trash folder permanently")
+	cleanCmd.Flags().BoolVarP(&cleanSnapshots, "snapshots", "s", false, "Thin APFS Time Machine local snapshots to release purged disk blocks")
 }
 
 // CategoryCleanResult tracks cleanup results per category for the summary screen.
@@ -61,23 +65,30 @@ func runClean(cmd *cobra.Command, args []string) error {
 	showWl, _ := cmd.Flags().GetBool("whitelist")
 	extVol, _ := cmd.Flags().GetString("external")
 
-	// 1. Handle --whitelist flag
 	if showWl {
 		return handleWhitelistDisplay()
 	}
 
-	// 2. Load user whitelist
 	wl, err := core.LoadWhitelist()
 	if err != nil {
 		wl = nil
 	}
 
-	// 3. Handle --external volume cleanup
 	if extVol != "" {
 		return handleExternalVolumeClean(extVol, dryRun, yes, wl)
 	}
 
-	// 4. Standard macOS Deep Cleaner
+	trashFlag, _ := cmd.Flags().GetBool("trash")
+	snapshotsFlag, _ := cmd.Flags().GetBool("snapshots")
+
+	if trashFlag && len(args) == 0 && !all {
+		return handleTrashClean(dryRun, yes)
+	}
+
+	if snapshotsFlag && len(args) == 0 && !all {
+		return handleSnapshotsClean(dryRun, yes)
+	}
+
 	modelsFlag, _ := cmd.Flags().GetBool("models")
 	aiFlag, _ := cmd.Flags().GetBool("ai")
 	if modelsFlag || aiFlag {
@@ -91,7 +102,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("scan failed: %w", err)
 	}
 
-	// Filter categories if specific args were passed (e.g. sf clean dev-tools browsers or --models)
 	if len(args) > 0 {
 		categories = filterCategoriesByArgs(categories, args)
 		if len(categories) == 0 {
@@ -99,7 +109,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 5. Interactive TUI multi-select mode if attached to TTY and not confirmed via --yes
 	if !yes && core.IsTTY() && len(args) == 0 {
 		selectedCategories, err := runInteractiveCategorySelect(categories, all)
 		if err != nil {
@@ -111,7 +120,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		}
 		categories = selectedCategories
 	} else if !all && len(args) == 0 {
-		// Non-interactive default: filter by EnabledByDefault
 		var defaults []*engine.CleanCategory
 		for _, c := range categories {
 			if c.EnabledByDefault {
@@ -121,7 +129,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		categories = defaults
 	}
 
-	// 6. Execute cleanup or dry run
 	logger, logErr := core.NewLogger()
 	if logErr == nil {
 		defer logger.Close()
@@ -131,7 +138,7 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return executeDryRunSummary(categories, logger)
 	}
 
-	return executeCleanSummary(categories, logger, cleanDockerPrune)
+	return executeCleanSummary(categories, logger, trashFlag, cleanDockerPrune)
 }
 
 // handleWhitelistDisplay prints current whitelist configuration.
@@ -210,7 +217,83 @@ func handleExternalVolumeClean(volPath string, dryRun, yes bool, wl *core.Whitel
 		defer logger.Close()
 	}
 
-	return executeCleanSummary([]*engine.CleanCategory{cat}, logger)
+	return executeCleanSummary([]*engine.CleanCategory{cat}, logger, false)
+}
+
+// handleTrashClean handles standalone emptying of ~/.Trash.
+func handleTrashClean(dryRun, yes bool) error {
+	count, totalBytes, err := core.GetTrashSize()
+	if err != nil {
+		return fmt.Errorf("failed to inspect Trash: %w", err)
+	}
+	if count == 0 {
+		fmt.Println("Trash is already empty.")
+		return nil
+	}
+
+	if dryRun {
+		fmt.Printf("[dry-run] User Trash contains %d item(s) (%s)\n", count, core.FormatBytes(totalBytes))
+		return nil
+	}
+
+	if !yes && core.IsTTY() {
+		fmt.Printf("Permanently delete %d item(s) (%s) from Trash? [y/N]: ", count, core.FormatBytes(totalBytes))
+		reader := bufio.NewReader(os.Stdin)
+		resp, _ := reader.ReadString('\n')
+		resp = strings.TrimSpace(strings.ToLower(resp))
+		if resp != "y" && resp != "yes" {
+			fmt.Println("Cancelled.")
+			return nil
+		}
+	}
+
+	removed, freed, err := core.EmptyTrash()
+	if err != nil {
+		return fmt.Errorf("error emptying trash: %w", err)
+	}
+	fmt.Printf("✔ Emptied Trash: %d item(s) removed, %s reclaimed\n", removed, core.FormatBytes(freed))
+	return nil
+}
+
+// handleSnapshotsClean thins APFS local snapshots on root filesystem.
+func handleSnapshotsClean(dryRun, yes bool) error {
+	snaps, err := engine.ListLocalSnapshots()
+	if err != nil {
+		return fmt.Errorf("failed to inspect local snapshots: %w", err)
+	}
+	if len(snaps) == 0 {
+		fmt.Println("No local APFS Time Machine snapshots found.")
+		return nil
+	}
+
+	if dryRun {
+		fmt.Printf("[dry-run] Found %d APFS local snapshot(s):\n", len(snaps))
+		for _, s := range snaps {
+			fmt.Printf("  • %s (%s)\n", s.Name, s.DateStr)
+		}
+		return nil
+	}
+
+	if !yes && core.IsTTY() {
+		fmt.Printf("Thin %d APFS local snapshot(s) to release retained space? [y/N]: ", len(snaps))
+		reader := bufio.NewReader(os.Stdin)
+		resp, _ := reader.ReadString('\n')
+		resp = strings.TrimSpace(strings.ToLower(resp))
+		if resp != "y" && resp != "yes" {
+			fmt.Println("Cancelled.")
+			return nil
+		}
+	}
+
+	out, err := engine.ThinLocalSnapshots(0, 4)
+	if err != nil {
+		return err
+	}
+	if out != "" {
+		fmt.Println(out)
+	}
+	fmt.Printf("✔ APFS local snapshot thinning complete.\n")
+	return nil
 }
 
 // filterCategoriesByArgs matches category IDs or names against user arguments.
@@ -284,7 +367,7 @@ func executeDryRunSummary(categories []*engine.CleanCategory, logger *core.Logge
 		Padding(0, 1).
 		Bold(true).
 		Foreground(lipgloss.Color("#BD93F9")).
-		Render("🧹 Sift Deep Cleaner — Dry Run Preview (No files will be modified)")
+		Render("🧹 Sift Cache Cleaner: Dry Run Preview (No files will be modified)")
 
 	fmt.Println()
 	fmt.Println(headerBox)
@@ -332,15 +415,15 @@ func executeDryRunSummary(categories []*engine.CleanCategory, logger *core.Logge
 	return nil
 }
 
-// executeCleanSummary cleans the categories and renders a Mole-style one-screen summary.
-func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger, dockerPrune ...bool) error {
+// executeCleanSummary cleans the categories and renders a summary screen.
+func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger, cleanTrash bool, dockerPrune ...bool) error {
 	headerBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#50FA7B")).
 		Padding(0, 1).
 		Bold(true).
 		Foreground(lipgloss.Color("#50FA7B")).
-		Render("🧹 Sift Deep Cleaner — Reclaimed Space Summary")
+		Render("🧹 Sift Cache Cleaner: Reclaimed Space Summary")
 
 	fmt.Println()
 	fmt.Println(headerBox)
@@ -357,7 +440,6 @@ func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger
 	for _, cat := range categories {
 		meta, _ := engine.GetCategoryMeta(cat.ID)
 
-		// Print visual spinner / active category marker
 		rep, err := engine.CleanCategoryExecute(cat, false, logger, dockerPrune...)
 		if err != nil {
 			failMark := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555")).Render("✗")
@@ -388,6 +470,27 @@ func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger
 	)
 	fmt.Println(totalLine)
 
+	if cleanTrash {
+		removed, freed, tErr := core.EmptyTrash()
+		if tErr == nil && removed > 0 {
+			fmt.Println()
+			fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("#50FA7B")).Render(
+				fmt.Sprintf("  ✔ Emptied Trash: %d item(s) permanently removed (%s reclaimed)", removed, core.FormatBytes(freed)),
+			))
+		}
+	} else if _, trashBytes, err := core.GetTrashSize(); err == nil && trashBytes > 0 {
+		fmt.Println()
+		fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
+			fmt.Sprintf("  Tip: Items moved to Trash (%s). Run 'sf clean --trash' to reclaim disk blocks immediately.", core.FormatBytes(trashBytes)),
+		))
+	}
+
+	if snaps, err := engine.ListLocalSnapshots(); err == nil && len(snaps) > 0 {
+		fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
+			fmt.Sprintf("  Tip: %d APFS local snapshot(s) detected. Run 'sf clean --snapshots' to thin retained storage.", len(snaps)),
+		))
+	}
+
 	if totalFailedCount > 0 {
 		fmt.Println()
 		fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
@@ -397,7 +500,7 @@ func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger
 
 	fmt.Println()
 	fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
-		fmt.Sprintf("  Forensic audit log written to %s", core.LogDir()),
+		fmt.Sprintf("  Audit log written to %s", core.LogDir()),
 	))
 	fmt.Println()
 

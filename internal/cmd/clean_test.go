@@ -50,6 +50,8 @@ func resetCleanFlags() {
 	_ = cleanCmd.Flags().Set("external", "")
 	_ = cleanCmd.Flags().Set("models", "false")
 	_ = cleanCmd.Flags().Set("ai", "false")
+	_ = cleanCmd.Flags().Set("trash", "false")
+	_ = cleanCmd.Flags().Set("snapshots", "false")
 }
 
 func executeCleanWithArgs(args []string) (string, error) {
@@ -104,7 +106,6 @@ func TestCleanCmd_DryRun(t *testing.T) {
 		t.Errorf("expected dry run header in output, got: %s", out)
 	}
 
-	// File must NOT be deleted
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Fatalf("CRITICAL: sf clean --dry-run deleted test file %s", testFile)
 	}
@@ -131,7 +132,6 @@ func TestCleanCmd_ExecuteWithYes(t *testing.T) {
 		t.Errorf("expected summary in output, got: %s", out)
 	}
 
-	// File should be moved to trash
 	if _, err := os.Stat(testFile); !os.IsNotExist(err) {
 		t.Errorf("expected file %s to be removed, but it still exists", testFile)
 	}
@@ -176,5 +176,44 @@ func TestCleanCmd_FilterByArg(t *testing.T) {
 
 	if !strings.Contains(out, "Homebrew") {
 		t.Errorf("expected output to contain Homebrew, got: %s", out)
+	}
+}
+
+func TestCleanCmd_Trash(t *testing.T) {
+	home := setupTestHome(t)
+	trashDir := filepath.Join(home, ".Trash")
+	_ = os.MkdirAll(trashDir, 0755)
+	_ = os.WriteFile(filepath.Join(trashDir, "trash.txt"), []byte("sample trash"), 0644)
+
+	out, err := executeCleanWithArgs([]string{"--trash", "--dry-run"})
+	if err != nil {
+		t.Fatalf("sf clean --trash --dry-run failed: %v", err)
+	}
+	if !strings.Contains(out, "User Trash contains 1 item(s)") {
+		t.Errorf("expected dry-run trash count, got: %s", out)
+	}
+
+	out, err = executeCleanWithArgs([]string{"--trash", "--yes"})
+	if err != nil {
+		t.Fatalf("sf clean --trash --yes failed: %v", err)
+	}
+	if !strings.Contains(out, "Emptied Trash") {
+		t.Errorf("expected emptied trash message, got: %s", out)
+	}
+
+	if _, err := os.Stat(filepath.Join(trashDir, "trash.txt")); !os.IsNotExist(err) {
+		t.Errorf("expected trash file to be deleted, but still exists")
+	}
+}
+
+func TestCleanCmd_Snapshots(t *testing.T) {
+	_ = setupTestHome(t)
+
+	out, err := executeCleanWithArgs([]string{"--snapshots", "--dry-run"})
+	if err != nil {
+		t.Fatalf("sf clean --snapshots --dry-run failed: %v", err)
+	}
+	if !strings.Contains(out, "snapshots") {
+		t.Errorf("expected snapshots mention in output, got: %s", out)
 	}
 }

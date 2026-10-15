@@ -68,7 +68,6 @@ func TestStartupModel_Initialization(t *testing.T) {
 func TestStartupModel_Filtering(t *testing.T) {
 	m := New(sampleServices())
 
-	// Filter Zombies
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}})
 	if len(m.filtered) != 1 {
 		t.Fatalf("expected 1 zombie service, got %d", len(m.filtered))
@@ -77,25 +76,21 @@ func TestStartupModel_Filtering(t *testing.T) {
 		t.Errorf("expected filtered item to be zombie")
 	}
 
-	// Filter User
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
 	if len(m.filtered) != 2 {
 		t.Fatalf("expected 2 user services, got %d", len(m.filtered))
 	}
 
-	// Filter Global
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
 	if len(m.filtered) != 1 {
 		t.Fatalf("expected 1 global service, got %d", len(m.filtered))
 	}
 
-	// Filter System
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	if len(m.filtered) != 1 {
 		t.Fatalf("expected 1 system daemon, got %d", len(m.filtered))
 	}
 
-	// Filter All
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	if len(m.filtered) != 4 {
 		t.Fatalf("expected 4 services after resetting to all, got %d", len(m.filtered))
@@ -106,13 +101,11 @@ func TestStartupModel_Navigation(t *testing.T) {
 	m := New(sampleServices())
 	m, _ = updateModel(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 
-	// Down
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
 	if m.cursor != 1 {
 		t.Errorf("expected cursor 1, got %d", m.cursor)
 	}
 
-	// Up
 	m, _ = updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	if m.cursor != 0 {
 		t.Errorf("expected cursor 0, got %d", m.cursor)
@@ -122,13 +115,11 @@ func TestStartupModel_Navigation(t *testing.T) {
 func TestStartupModel_AsyncToggleAndMessages(t *testing.T) {
 	m := New(sampleServices())
 
-	// Press Space to toggle service
 	m, cmd := updateModel(m, tea.KeyMsg{Type: tea.KeySpace})
 	if cmd == nil {
 		t.Errorf("expected tea.Cmd returned for async toggle")
 	}
 
-	// Simulate toggle response
 	m, _ = updateModel(m, toggleServiceMsg{
 		label:  "com.example.useragent",
 		loaded: false,
@@ -146,16 +137,12 @@ func TestStartupModel_AsyncToggleAndMessages(t *testing.T) {
 func TestStartupModel_ZombieRemoval(t *testing.T) {
 	m := New(sampleServices())
 
-	// Move cursor to zombie (index 1)
 	m.cursor = 1
-
-	// Press 'x' to trigger remove
 	m, cmd := updateModel(m, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	if cmd == nil {
 		t.Errorf("expected tea.Cmd returned for async zombie removal")
 	}
 
-	// Simulate remove response
 	m, _ = updateModel(m, removeZombieMsg{
 		label:     "com.example.zombieagent",
 		plistPath: "/Users/test/Library/LaunchAgents/com.example.zombieagent.plist",

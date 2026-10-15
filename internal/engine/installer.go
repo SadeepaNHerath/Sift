@@ -152,7 +152,6 @@ func ScanInstallersDirs(dirs []string) ([]InstallerFile, error) {
 			lowerName := strings.ToLower(name)
 			ext := filepath.Ext(lowerName)
 
-			// 1. Direct installer files (.dmg, .pkg, .mpkg, .iso, .xip)
 			if directInstallerExts[ext] {
 				info, err := d.Info()
 				if err != nil {
@@ -171,7 +170,6 @@ func ScanInstallersDirs(dirs []string) ([]InstallerFile, error) {
 				return nil
 			}
 
-			// 2. Deep inspection of .zip files
 			if ext == ".zip" {
 				info, err := d.Info()
 				if err != nil {

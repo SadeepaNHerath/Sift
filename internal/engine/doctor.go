@@ -42,34 +42,18 @@ type DoctorReport struct {
 func RunDoctorChecks() (*DoctorReport, error) {
 	report := &DoctorReport{}
 
-	// 1. Full Disk Access Check
 	checkFDA(report)
-
-	// 2. Disk Capacity Pressure Check
 	checkDiskPressure(report)
-
-	// 3. Memory Pressure & Load Check
 	checkMemoryPressure(report)
-
-	// 4. Oversized Caches Check
 	checkCaches(report)
-
-	// 5. Stale Installers Check
 	checkInstallers(report)
-
-	// 6. Orphaned App Leftovers Check
 	checkLeftovers(report)
-
-	// 7. Broken Launch Agents Check
 	checkLaunchAgents(report)
-
-	// 8. Homebrew Health Check
 	checkHomebrew(report)
-
-	// 9. Touch ID for Sudo Check
 	checkTouchID(report)
+	checkAPFSSnapshots(report)
+	checkTrash(report)
 
-	// Compute totals
 	for _, r := range report.Results {
 		switch r.Severity {
 		case SeverityOK:
@@ -418,4 +402,52 @@ func checkTouchID(report *DoctorReport) {
 			FixCommand: "sf touchid --enable",
 		})
 	}
+}
+
+func checkAPFSSnapshots(report *DoctorReport) {
+	snaps, err := ListLocalSnapshots()
+	if err != nil || len(snaps) == 0 {
+		report.Results = append(report.Results, CheckResult{
+			ID:       "snapshots",
+			Name:     "APFS Local Snapshots",
+			Category: "Storage",
+			Severity: SeverityOK,
+			Summary:  "No local APFS Time Machine snapshots retaining disk blocks",
+		})
+		return
+	}
+
+	report.Results = append(report.Results, CheckResult{
+		ID:         "snapshots",
+		Name:       "APFS Local Snapshots",
+		Category:   "Storage",
+		Severity:   SeverityWarning,
+		Summary:    fmt.Sprintf("Found %d local APFS snapshot(s) retaining deleted disk space", len(snaps)),
+		Details:    "macOS Time Machine keeps local snapshots that retain deleted blocks until thinned or aged",
+		FixCommand: "sf clean --snapshots",
+	})
+}
+
+func checkTrash(report *DoctorReport) {
+	count, totalBytes, err := core.GetTrashSize()
+	if err != nil || count == 0 || totalBytes < 500*1000*1000 {
+		report.Results = append(report.Results, CheckResult{
+			ID:       "trash",
+			Name:     "Trash Capacity",
+			Category: "Cleanliness",
+			Severity: SeverityOK,
+			Summary:  fmt.Sprintf("User Trash contains %d item(s) (%s)", count, core.FormatBytes(totalBytes)),
+		})
+		return
+	}
+
+	report.Results = append(report.Results, CheckResult{
+		ID:         "trash",
+		Name:       "Trash Capacity",
+		Category:   "Cleanliness",
+		Severity:   SeverityWarning,
+		Summary:    fmt.Sprintf("User Trash contains %d item(s) occupying %s", count, core.FormatBytes(totalBytes)),
+		Details:    "Items in ~/.Trash continue consuming drive space until emptied",
+		FixCommand: "sf clean --trash",
+	})
 }

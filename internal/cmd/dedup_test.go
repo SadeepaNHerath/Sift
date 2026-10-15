@@ -78,7 +78,6 @@ func TestDedupCmd_DryRun(t *testing.T) {
 		t.Errorf("expected KEEP and TRASH markers in output, got: %s", out)
 	}
 
-	// Verify both files still exist
 	if _, err := os.Stat(f1); err != nil {
 		t.Errorf("file1 was deleted during dry run!")
 	}
@@ -125,7 +124,6 @@ func TestDedupCmd_NonInteractiveRequiresConfirmation(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(dir, "a.bin"), data, 0644)
 	_ = os.WriteFile(filepath.Join(dir, "b.bin"), data, 0644)
 
-	// In test mode without TTY, should fail if --yes not provided
 	_, err := executeDedupWithArgs([]string{"--min-size", "10B", dir})
 	if err == nil {
 		t.Fatal("expected error requiring confirmation in non-interactive environment")
@@ -156,12 +154,10 @@ func TestDedupCmd_ExecuteWithYesKeepOldest(t *testing.T) {
 		t.Errorf("expected completion message, got: %s", out)
 	}
 
-	// Verify old file still exists
 	if _, err := os.Stat(fOld); err != nil {
 		t.Errorf("old file was erroneously removed: %v", err)
 	}
 
-	// Verify new file was moved to Trash
 	if _, err := os.Stat(fNew); !os.IsNotExist(err) {
 		t.Errorf("new duplicate file was not removed: %v", err)
 	}
@@ -221,7 +217,6 @@ func TestDedupCmd_HardlinkExecute(t *testing.T) {
 		t.Errorf("expected hardlink completion message, got: %s", out)
 	}
 
-	// Verify both files still exist (not deleted!)
 	if _, err := os.Stat(f1); err != nil {
 		t.Errorf("f1 was erroneously removed: %v", err)
 	}

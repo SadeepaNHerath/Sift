@@ -45,14 +45,12 @@ func runOptimize(cmd *cobra.Command, args []string) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 	showWl, _ := cmd.Flags().GetBool("whitelist")
 
-	// 1. Handle --whitelist flag
 	if showWl {
 		return handleWhitelistDisplay()
 	}
 
 	tasks := engine.TaskCatalog()
 
-	// 2. Filter tasks if specific arguments were passed (e.g. sf optimize dns sqlite)
 	if len(args) > 0 {
 		var filtered []engine.OptimizeTask
 		argMap := make(map[string]bool)
@@ -72,7 +70,6 @@ func runOptimize(cmd *cobra.Command, args []string) error {
 		tasks = filtered
 	}
 
-	// 3. Interactive TUI multi-select mode if attached to TTY and not confirmed via --yes
 	if !yes && core.IsTTY() && len(args) == 0 {
 		selectedTasks, err := runInteractiveTaskSelect(tasks, all)
 		if err != nil {
@@ -84,17 +81,14 @@ func runOptimize(cmd *cobra.Command, args []string) error {
 		}
 		tasks = selectedTasks
 	} else if !yes && !core.IsTTY() && len(args) == 0 && !all {
-		// Non-interactive default without --yes: preview tasks safely
 		dryRun = true
 	}
 
-	// 4. Initialize forensic logger
 	logger, logErr := core.NewLogger()
 	if logErr == nil {
 		defer logger.Close()
 	}
 
-	// 5. Execute dry-run preview or live tasks
 	if dryRun {
 		return executeOptimizeDryRun(tasks, logger)
 	}
@@ -154,7 +148,7 @@ func executeOptimizeDryRun(tasks []engine.OptimizeTask, logger *core.Logger) err
 		Padding(0, 1).
 		Bold(true).
 		Foreground(lipgloss.Color("#BD93F9")).
-		Render("⚡ Sift System Optimizer — Dry Run Preview (No modifications applied)")
+		Render("⚡ Sift System Optimizer: Dry Run Preview (No modifications applied)")
 
 	fmt.Println()
 	fmt.Println(headerBox)
@@ -191,7 +185,7 @@ func executeOptimizeLive(tasks []engine.OptimizeTask, logger *core.Logger) error
 		Padding(0, 1).
 		Bold(true).
 		Foreground(lipgloss.Color("#50FA7B")).
-		Render("⚡ Sift System Optimizer — Applying Optimizations")
+		Render("⚡ Sift System Optimizer: Applying Optimizations")
 
 	fmt.Println()
 	fmt.Println(headerBox)
@@ -234,7 +228,7 @@ func executeOptimizeLive(tasks []engine.OptimizeTask, logger *core.Logger) error
 
 	fmt.Println()
 	fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
-		fmt.Sprintf("  Forensic audit log written to %s", core.LogDir()),
+		fmt.Sprintf("  Audit log written to %s", core.LogDir()),
 	))
 	fmt.Println()
 

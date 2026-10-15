@@ -22,6 +22,8 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
 	"golang.org/x/sys/unix"
+
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // SystemMetrics represents the complete system health and resource utilization snapshot.
@@ -70,6 +72,8 @@ type DiskMetrics struct {
 	UsedPercent    float64 `json:"used_percent"`
 	ReadBytesRate  float64 `json:"read_bytes_rate"`  // Bytes per second
 	WriteBytesRate float64 `json:"write_bytes_rate"` // Bytes per second
+	TrashBytes     uint64  `json:"trash_bytes"`
+	TrashItems     int     `json:"trash_items"`
 }
 
 // NetworkMetrics contains network I/O throughput rates, history, and active interface name.
@@ -169,7 +173,6 @@ func CalculateHealthScore(metrics *SystemMetrics) int {
 
 	score := 100.0
 
-	// 1. CPU load penalty
 	// Usage above 60% starts penalizing, up to 30 points
 	if metrics.CPU.TotalPercent > 60.0 {
 		cpuPenalty := (metrics.CPU.TotalPercent - 60.0) * 0.75
@@ -193,14 +196,12 @@ func CalculateHealthScore(metrics *SystemMetrics) int {
 		score -= loadPenalty
 	}
 
-	// 2. Memory pressure penalty
 	switch strings.ToLower(metrics.Memory.PressureLevel) {
 	case "critical":
 		score -= 35.0
 	case "warning":
 		score -= 15.0
 	default:
-		// Normal, check used percent if total > 0
 		if metrics.Memory.Total > 0 {
 			usedPct := float64(metrics.Memory.Used) / float64(metrics.Memory.Total) * 100.0
 			if usedPct > 90.0 {
@@ -211,7 +212,6 @@ func CalculateHealthScore(metrics *SystemMetrics) int {
 		}
 	}
 
-	// 3. Disk fullness penalty
 	if metrics.Disk.UsedPercent >= 95.0 {
 		score -= 35.0
 	} else if metrics.Disk.UsedPercent >= 90.0 {
@@ -222,7 +222,6 @@ func CalculateHealthScore(metrics *SystemMetrics) int {
 		score -= 5.0
 	}
 
-	// 4. Zombie processes penalty
 	for _, proc := range metrics.TopProcesses {
 		if proc.IsZombie {
 			score -= 5.0
@@ -344,7 +343,6 @@ func collectMemory() (MemoryMetrics, error) {
 		PressureLevel: "Normal",
 	}
 
-	// 1. gopsutil virtual memory
 	v, err := mem.VirtualMemory()
 	if err == nil && v != nil {
 		res.Total = v.Total
@@ -361,7 +359,7 @@ func collectMemory() (MemoryMetrics, error) {
 		}
 	}
 
-	// 2. Parse vm_stat for compressed memory and accurate page breakdown
+	// Parse vm_stat for compressed memory and page breakdown
 	vmPages, pageSize, vmErr := parseVMStat()
 	if vmErr == nil && pageSize > 0 {
 		if compPages, ok := vmPages["Pages occupied by compressor"]; ok {
@@ -387,15 +385,13 @@ func collectMemory() (MemoryMetrics, error) {
 		}
 	}
 
-	// If available was not calculated or is 0, estimate it
 	if res.Available == 0 && res.Total > 0 {
 		if res.Free+res.Active < res.Total {
 			res.Available = res.Free
 		}
 	}
 
-	// 3. Darwin memory pressure level via sysctl kern.memorystatus_vm_pressure_level
-	// 1 = Normal, 2 = Warning, 4 = Critical
+	// Query Darwin memory pressure via kern.memorystatus_vm_pressure_level (1=Normal, 2=Warning, 4=Critical)
 	pressureVal, pErr := unix.SysctlUint32("kern.memorystatus_vm_pressure_level")
 	if pErr == nil {
 		switch pressureVal {
@@ -477,7 +473,6 @@ func collectDiskAndNetwork() (DiskMetrics, NetworkMetrics) {
 
 	now := time.Now()
 
-	// 1. Root volume storage using statfs
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs("/", &stat); err == nil {
 		bsize := uint64(stat.Bsize)
@@ -489,7 +484,11 @@ func collectDiskAndNetwork() (DiskMetrics, NetworkMetrics) {
 		}
 	}
 
-	// 2. Query total Disk I/O bytes
+	if cnt, trashBytes, err := core.GetTrashSize(); err == nil && trashBytes >= 0 {
+		diskRes.TrashBytes = uint64(trashBytes)
+		diskRes.TrashItems = cnt
+	}
+
 	var currDiskRead, currDiskWrite uint64
 	if diskCounters, err := disk.IOCounters(); err == nil {
 		for _, counter := range diskCounters {
@@ -498,12 +497,10 @@ func collectDiskAndNetwork() (DiskMetrics, NetworkMetrics) {
 		}
 	}
 
-	// 3. Query Network I/O bytes
 	var currNetSent, currNetRecv uint64
 	if netCounters, err := net.IOCounters(true); err == nil {
 		var maxTraffic uint64
 		for _, counter := range netCounters {
-			// Skip loopback
 			if strings.HasPrefix(counter.Name, "lo") {
 				continue
 			}
@@ -518,7 +515,6 @@ func collectDiskAndNetwork() (DiskMetrics, NetworkMetrics) {
 		}
 	}
 
-	// 4. Update differential tracker for rates and sparkline
 	globalTracker.mu.Lock()
 	defer globalTracker.mu.Unlock()
 
@@ -569,7 +565,6 @@ func collectBattery() BatteryMetrics {
 		Health: "Normal",
 	}
 
-	// 1. Quick check via pmset -g batt
 	out, err := exec.Command("pmset", "-g", "batt").Output()
 	if err == nil {
 		str := string(out)
@@ -592,7 +587,6 @@ func collectBattery() BatteryMetrics {
 		}
 	}
 
-	// 2. Query ioreg for AppleSmartBattery details (cycle count, max capacity, temperature)
 	if res.Present {
 		ioregOut, ioErr := exec.Command("ioreg", "-r", "-c", "AppleSmartBattery").Output()
 		if ioErr == nil {
