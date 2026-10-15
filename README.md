@@ -1,21 +1,21 @@
-# Sift (`sf`)
+<p align="center">
+  <img src="assets/logo.png" alt="Sift Logo" width="180" height="180" />
+</p>
 
-```text
-   ____ ___ _____ _____ 
-  / ___|_ _|  ___|_   _|
-  \___ \ | || |_    | |  
-   ___) || ||  _|   | |  
-  |____/|___|_|     |_|  
-```
+<h1 align="center">Sift (<code>sf</code>)</h1>
 
-> **Terminal-first macOS maintenance & disk analysis toolkit**
+<p align="center">
+  <strong>Blazing-fast, terminal-first macOS maintenance, app uninstaller & disk analysis toolkit</strong>
+</p>
 
-[![GitHub Release](https://img.shields.io/github/v/release/SadeepaNHerath/Sift?style=flat&logo=github&color=388bfd)](https://github.com/SadeepaNHerath/Sift/releases/latest)
-[![CI Status](https://github.com/SadeepaNHerath/Sift/actions/workflows/test.yml/badge.svg)](https://github.com/SadeepaNHerath/Sift/actions/workflows/test.yml)
-[![Homebrew Tap](https://img.shields.io/badge/Homebrew-SadeepaNHerath%2Ftap-orange?style=flat&logo=homebrew)](https://github.com/SadeepaNHerath/homebrew-tap)
-[![Go Version](https://img.shields.io/badge/Go-1.23%2B-00ADD8?style=flat&logo=go)](https://golang.org)
-[![Platform](https://img.shields.io/badge/Platform-macOS%20%28arm64%20%7C%20x86__64%29-000000?style=flat&logo=apple)](https://apple.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/SadeepaNHerath/Sift/releases/latest"><img src="https://img.shields.io/github/v/release/SadeepaNHerath/Sift?style=flat&logo=github&color=388bfd" alt="GitHub Release" /></a>
+  <a href="https://github.com/SadeepaNHerath/Sift/actions/workflows/test.yml"><img src="https://github.com/SadeepaNHerath/Sift/actions/workflows/test.yml/badge.svg" alt="CI Status" /></a>
+  <a href="https://github.com/SadeepaNHerath/homebrew-tap"><img src="https://img.shields.io/badge/Homebrew-SadeepaNHerath%2Ftap-orange?style=flat&logo=homebrew" alt="Homebrew Tap" /></a>
+  <a href="https://golang.org"><img src="https://img.shields.io/badge/Go-1.23%2B-00ADD8?style=flat&logo=go" alt="Go Version" /></a>
+  <a href="https://apple.com"><img src="https://img.shields.io/badge/Platform-macOS%20%28arm64%20%7C%20x86__64%29-000000?style=flat&logo=apple" alt="Platform" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+</p>
 
 ---
 
