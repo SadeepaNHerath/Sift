@@ -214,7 +214,7 @@ func renderDedupDryRun(cmd *cobra.Command, groups []engine.DuplicateGroup, keepN
 	}
 
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, titleStyle.Render("▸ DEDUP DRY RUN PREVIEW — No files will be modified"))
+	fmt.Fprintln(out, titleStyle.Render("▸ DEDUP DRY RUN PREVIEW: No files will be modified"))
 	fmt.Fprintln(out, strings.Repeat("─", 72))
 
 	for i, g := range groups {

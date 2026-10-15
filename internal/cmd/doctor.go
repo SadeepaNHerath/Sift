@@ -21,7 +21,7 @@ var (
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose system health, disk pressure, and configuration issues",
-	Long: `Run comprehensive diagnostic checks across Full Disk Access permissions,
+	Long: `Run diagnostic health checks across Full Disk Access permissions,
 storage capacity, memory pressure, cache accumulation, background daemons,
 and orphaned application leftovers with actionable repair suggestions.`,
 	Run: func(cmd *cobra.Command, args []string) {

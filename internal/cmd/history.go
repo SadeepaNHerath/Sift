@@ -21,7 +21,7 @@ var historyCmd = &cobra.Command{
 	Use:   "history",
 	Short: "View audit logs and history of cleanup operations",
 	Long: `Review the historical record of all maintenance, cleanup, and deletion operations
-recorded in the Sift forensic audit ledger (~/Library/Logs/sf/).`,
+recorded in the Sift audit ledger (~/Library/Logs/sf/).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := runHistory(cmd, args); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)

@@ -26,6 +26,7 @@ type SysSummary struct {
 	DiskTotal string
 	DiskPct   float64
 	Username  string
+	TrashSize string
 }
 
 // Model is the Bubble Tea model for the Sift interactive home dashboard.
@@ -161,7 +162,7 @@ func (m Model) View() string {
 	// 1. ASCII Banner
 	b.WriteString(bannerStyle.Render(asciiBanner))
 	b.WriteString("\n")
-	b.WriteString(versionBadgeStyle.Render(fmt.Sprintf("  v%s • Terminal-first macOS maintenance toolkit", m.version)))
+	b.WriteString(versionBadgeStyle.Render(fmt.Sprintf("  v%s • Terminal macOS maintenance toolkit", m.version)))
 	b.WriteString("\n\n")
 
 	// 2. Disk color calculation
@@ -177,13 +178,21 @@ func (m Model) View() string {
 	diskUsageStyle := lipgloss.NewStyle().Bold(true).Foreground(diskColor)
 
 	// 3. System summary box (responsive to width)
+	trashCompact := ""
+	trashFull := ""
+	if m.sys.TrashSize != "" {
+		trashCompact = fmt.Sprintf("   %s   %s %s", sepStyle.Render("│"), labelStyle.Render("Trash:"), valueStyle.Render(m.sys.TrashSize))
+		trashFull = fmt.Sprintf("  %s  %s %s", sepStyle.Render("│"), labelStyle.Render("Trash:"), valueStyle.Render(m.sys.TrashSize))
+	}
+
 	var summaryContent string
 	if m.width > 0 && m.width < 96 {
 		// 2-row compact layout for narrower windows
-		row1 := fmt.Sprintf("%s %s   %s   %s %s",
+		row1 := fmt.Sprintf("%s %s   %s   %s %s%s",
 			labelStyle.Render(" Host:"), valueStyle.Render(m.sys.Hostname),
 			sepStyle.Render("│"),
 			labelStyle.Render("User:"), valueStyle.Render(m.sys.Username),
+			trashCompact,
 		)
 		row2 := fmt.Sprintf("%s %s   %s   %s %s / %s (%s)",
 			labelStyle.Render("OS:"), valueStyle.Render(m.sys.OSVersion),
@@ -194,7 +203,7 @@ func (m Model) View() string {
 	} else {
 		// Single row layout for full terminals
 		summaryContent = fmt.Sprintf(
-			"%s %s  %s  %s %s  %s  %s %s / %s (%s)  %s  %s %s",
+			"%s %s  %s  %s %s  %s  %s %s / %s (%s)%s  %s  %s %s",
 			labelStyle.Render(" Host:"),
 			valueStyle.Render(m.sys.Hostname),
 			sepStyle.Render("│"),
@@ -205,6 +214,7 @@ func (m Model) View() string {
 			valueStyle.Render(m.sys.DiskFree),
 			valueStyle.Render(m.sys.DiskTotal),
 			diskUsageStyle.Render(fmt.Sprintf("%.1f%% used", m.sys.DiskPct)),
+			trashFull,
 			sepStyle.Render("│"),
 			labelStyle.Render("User:"),
 			valueStyle.Render(m.sys.Username),

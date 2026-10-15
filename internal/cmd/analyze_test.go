@@ -4,12 +4,16 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 func resetAnalyzeFlags() {
 	_ = analyzeCmd.Flags().Set("json", "false")
 	_ = analyzeCmd.Flags().Set("top", "0")
+	_ = analyzeCmd.Flags().Set("system-data", "false")
 }
 
 func executeAnalyzeWithArgs(args []string) (string, error) {
@@ -22,7 +26,7 @@ func executeAnalyzeWithArgs(args []string) (string, error) {
 }
 
 func TestAnalyzeCmd_FlagsRegistered(t *testing.T) {
-	flags := []string{"json", "top"}
+	flags := []string{"json", "top", "system-data"}
 	for _, f := range flags {
 		flag := analyzeCmd.Flags().Lookup(f)
 		if flag == nil {
@@ -96,5 +100,43 @@ func TestAnalyzeCmd_NonExistentPath(t *testing.T) {
 	_, err := executeAnalyzeWithArgs([]string{"--json", "/nonexistent_sift_analyze_dir"})
 	if err == nil {
 		t.Fatal("expected error for non-existent path, got nil")
+	}
+}
+
+func TestAnalyzeCmd_SystemData(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	// Mock xcode derived data
+	derivedData := filepath.Join(tempHome, "Library", "Developer", "Xcode", "DerivedData")
+	_ = os.MkdirAll(derivedData, 0755)
+	_ = os.WriteFile(filepath.Join(derivedData, "test.log"), []byte("system data mock"), 0644)
+
+	// 1. JSON mode
+	outStr, err := executeAnalyzeWithArgs([]string{"--system-data", "--json"})
+	if err != nil {
+		t.Fatalf("sf analyze --system-data --json failed: %v", err)
+	}
+
+	var report engine.SystemDataReport
+	if err := json.Unmarshal([]byte(outStr), &report); err != nil {
+		t.Fatalf("failed to parse system data JSON: %v, raw output: %s", err, outStr)
+	}
+
+	if report.TotalBytes == 0 {
+		t.Errorf("expected non-zero TotalBytes in system-data report")
+	}
+
+	// 2. Table / human output mode
+	outStr, err = executeAnalyzeWithArgs([]string{"--system-data"})
+	if err != nil {
+		t.Fatalf("sf analyze --system-data failed: %v", err)
+	}
+
+	if !strings.Contains(outStr, "System Data Breakdown") {
+		t.Errorf("expected header in output, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, "Xcode DerivedData") {
+		t.Errorf("expected Xcode DerivedData component, got: %s", outStr)
 	}
 }

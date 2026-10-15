@@ -348,8 +348,9 @@ func (m Model) renderDisk(panelWidth int) string {
 	)
 
 	freeLine := fmt.Sprintf(
-		"Free Storage: %s",
+		"Free: %-13s  │  Trash: %-12s",
 		lipgloss.NewStyle().Bold(true).Foreground(m.Styles.GreenColor).Render(formatBytes(d.Free)),
+		m.Styles.Value.Render(formatBytes(d.TrashBytes)),
 	)
 
 	content := strings.Join([]string{

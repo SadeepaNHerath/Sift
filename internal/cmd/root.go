@@ -14,6 +14,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/SadeepaNHerath/Sift/internal/core"
 	"github.com/SadeepaNHerath/Sift/internal/tui/mainmenu"
 )
 
@@ -33,10 +34,10 @@ func Execute() error {
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "sf",
-	Short: "Terminal-first macOS maintenance & disk analysis toolkit",
-	Long: `Sift (sf) is a high-performance, terminal-first macOS maintenance and disk analysis
-toolkit. It provides unified, safety-first tools to clean caches, uninstall applications
-with zero leftovers, analyze disk usage, tune system caches, and purge developer artifacts.`,
+	Short: "macOS system maintenance and disk analysis toolkit",
+	Long: `Sift (sf) is an open source macOS maintenance and disk analysis toolkit.
+It provides tools to clean caches, uninstall applications with zero leftovers,
+analyze disk usage, tune system caches, and purge developer artifacts.`,
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// EUID check: refuse direct execution as root / with sudo.
@@ -132,6 +133,7 @@ type sysSummary struct {
 	diskTotal string
 	diskPct   float64
 	username  string
+	trashSize string
 }
 
 // collectSystemSummary queries local macOS metrics.
@@ -176,6 +178,10 @@ func collectSystemSummary() sysSummary {
 		summary.diskTotal = "N/A"
 	}
 
+	if _, trashBytes, err := core.GetTrashSize(); err == nil && trashBytes > 0 {
+		summary.trashSize = core.FormatBytes(trashBytes)
+	}
+
 	return summary
 }
 
@@ -189,6 +195,7 @@ func runInteractiveMenu(parentCmd *cobra.Command) error {
 		DiskTotal: sys.diskTotal,
 		DiskPct:   sys.diskPct,
 		Username:  sys.username,
+		TrashSize: sys.trashSize,
 	}
 
 	menuItems := []mainmenu.MenuItem{

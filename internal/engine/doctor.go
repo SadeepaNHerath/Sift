@@ -69,6 +69,12 @@ func RunDoctorChecks() (*DoctorReport, error) {
 	// 9. Touch ID for Sudo Check
 	checkTouchID(report)
 
+	// 10. APFS Local Snapshots Check
+	checkAPFSSnapshots(report)
+
+	// 11. User Trash Capacity Check
+	checkTrash(report)
+
 	// Compute totals
 	for _, r := range report.Results {
 		switch r.Severity {
@@ -418,4 +424,52 @@ func checkTouchID(report *DoctorReport) {
 			FixCommand: "sf touchid --enable",
 		})
 	}
+}
+
+func checkAPFSSnapshots(report *DoctorReport) {
+	snaps, err := ListLocalSnapshots()
+	if err != nil || len(snaps) == 0 {
+		report.Results = append(report.Results, CheckResult{
+			ID:       "snapshots",
+			Name:     "APFS Local Snapshots",
+			Category: "Storage",
+			Severity: SeverityOK,
+			Summary:  "No local APFS Time Machine snapshots retaining disk blocks",
+		})
+		return
+	}
+
+	report.Results = append(report.Results, CheckResult{
+		ID:         "snapshots",
+		Name:       "APFS Local Snapshots",
+		Category:   "Storage",
+		Severity:   SeverityWarning,
+		Summary:    fmt.Sprintf("Found %d local APFS snapshot(s) retaining deleted disk space", len(snaps)),
+		Details:    "macOS Time Machine keeps local snapshots that retain deleted blocks until thinned or aged",
+		FixCommand: "sf clean --snapshots",
+	})
+}
+
+func checkTrash(report *DoctorReport) {
+	count, totalBytes, err := core.GetTrashSize()
+	if err != nil || count == 0 || totalBytes < 500*1000*1000 {
+		report.Results = append(report.Results, CheckResult{
+			ID:       "trash",
+			Name:     "Trash Capacity",
+			Category: "Cleanliness",
+			Severity: SeverityOK,
+			Summary:  fmt.Sprintf("User Trash contains %d item(s) (%s)", count, core.FormatBytes(totalBytes)),
+		})
+		return
+	}
+
+	report.Results = append(report.Results, CheckResult{
+		ID:         "trash",
+		Name:       "Trash Capacity",
+		Category:   "Cleanliness",
+		Severity:   SeverityWarning,
+		Summary:    fmt.Sprintf("User Trash contains %d item(s) occupying %s", count, core.FormatBytes(totalBytes)),
+		Details:    "Items in ~/.Trash continue consuming drive space until emptied",
+		FixCommand: "sf clean --trash",
+	})
 }

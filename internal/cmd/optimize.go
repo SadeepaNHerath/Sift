@@ -154,7 +154,7 @@ func executeOptimizeDryRun(tasks []engine.OptimizeTask, logger *core.Logger) err
 		Padding(0, 1).
 		Bold(true).
 		Foreground(lipgloss.Color("#BD93F9")).
-		Render("⚡ Sift System Optimizer — Dry Run Preview (No modifications applied)")
+		Render("⚡ Sift System Optimizer: Dry Run Preview (No modifications applied)")
 
 	fmt.Println()
 	fmt.Println(headerBox)
@@ -191,7 +191,7 @@ func executeOptimizeLive(tasks []engine.OptimizeTask, logger *core.Logger) error
 		Padding(0, 1).
 		Bold(true).
 		Foreground(lipgloss.Color("#50FA7B")).
-		Render("⚡ Sift System Optimizer — Applying Optimizations")
+		Render("⚡ Sift System Optimizer: Applying Optimizations")
 
 	fmt.Println()
 	fmt.Println(headerBox)
@@ -234,7 +234,7 @@ func executeOptimizeLive(tasks []engine.OptimizeTask, logger *core.Logger) error
 
 	fmt.Println()
 	fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
-		fmt.Sprintf("  Forensic audit log written to %s", core.LogDir()),
+		fmt.Sprintf("  Audit log written to %s", core.LogDir()),
 	))
 	fmt.Println()
 

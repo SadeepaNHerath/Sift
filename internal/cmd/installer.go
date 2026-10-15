@@ -155,7 +155,7 @@ func renderInstallerDryRun(cmd *cobra.Command, files []engine.InstallerFile, log
 	tagStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
 
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, titleStyle.Render("▸ DRY RUN PREVIEW — No files will be deleted"))
+	fmt.Fprintln(out, titleStyle.Render("▸ DRY RUN PREVIEW: No files will be deleted"))
 	fmt.Fprintln(out, strings.Repeat("─", 72))
 
 	for _, f := range files {

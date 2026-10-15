@@ -445,3 +445,53 @@ func TestMoveCrossDevice(t *testing.T) {
 		t.Errorf("dstDir subfile content mismatch: %v", err)
 	}
 }
+
+func TestGetTrashSizeAndEmptyTrash(t *testing.T) {
+	fakeHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+	_ = os.Setenv("HOME", fakeHome)
+
+	trashDir := filepath.Join(fakeHome, ".Trash")
+	if err := os.MkdirAll(trashDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Initial size should be 0
+	count, total, err := GetTrashSize()
+	if err != nil {
+		t.Fatalf("GetTrashSize failed: %v", err)
+	}
+	if count != 0 || total != 0 {
+		t.Errorf("expected empty trash, got count=%d, total=%d", count, total)
+	}
+
+	// 2. Add some mock trash items (5 bytes + 5 bytes = 10 bytes)
+	_ = os.WriteFile(filepath.Join(trashDir, "doc.txt"), []byte("hello"), 0644)
+	subDir := filepath.Join(trashDir, "subfolder")
+	_ = os.Mkdir(subDir, 0755)
+	_ = os.WriteFile(filepath.Join(subDir, "nested.txt"), []byte("world"), 0644)
+
+	count, total, err = GetTrashSize()
+	if err != nil {
+		t.Fatalf("GetTrashSize failed: %v", err)
+	}
+	if count != 2 || total != 10 {
+		t.Errorf("expected count=2, total=10, got count=%d, total=%d", count, total)
+	}
+
+	// 3. Empty trash
+	removed, freed, err := EmptyTrash()
+	if err != nil {
+		t.Fatalf("EmptyTrash failed: %v", err)
+	}
+	if removed != 2 || freed != 10 {
+		t.Errorf("expected removed=2, freed=10, got removed=%d, freed=%d", removed, freed)
+	}
+
+	// 4. Verify trash is now empty
+	count, total, _ = GetTrashSize()
+	if count != 0 || total != 0 {
+		t.Errorf("expected empty trash after EmptyTrash, got count=%d, total=%d", count, total)
+	}
+}

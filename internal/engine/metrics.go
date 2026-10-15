@@ -22,6 +22,8 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
 	"golang.org/x/sys/unix"
+
+	"github.com/SadeepaNHerath/Sift/internal/core"
 )
 
 // SystemMetrics represents the complete system health and resource utilization snapshot.
@@ -70,6 +72,8 @@ type DiskMetrics struct {
 	UsedPercent    float64 `json:"used_percent"`
 	ReadBytesRate  float64 `json:"read_bytes_rate"`  // Bytes per second
 	WriteBytesRate float64 `json:"write_bytes_rate"` // Bytes per second
+	TrashBytes     uint64  `json:"trash_bytes"`
+	TrashItems     int     `json:"trash_items"`
 }
 
 // NetworkMetrics contains network I/O throughput rates, history, and active interface name.
@@ -487,6 +491,11 @@ func collectDiskAndNetwork() (DiskMetrics, NetworkMetrics) {
 		if diskRes.Total > 0 {
 			diskRes.UsedPercent = (float64(diskRes.Used) / float64(diskRes.Total)) * 100.0
 		}
+	}
+
+	if cnt, trashBytes, err := core.GetTrashSize(); err == nil && trashBytes >= 0 {
+		diskRes.TrashBytes = uint64(trashBytes)
+		diskRes.TrashItems = cnt
 	}
 
 	// 2. Query total Disk I/O bytes
