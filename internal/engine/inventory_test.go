@@ -133,13 +133,11 @@ func TestAppCacheLifecycle(t *testing.T) {
 		t.Fatalf("ParseInfo failed: %v", err)
 	}
 
-	// 1. Save cache
 	apps := []AppInfo{*info}
 	if err := saveCache(cacheFile, apps); err != nil {
 		t.Fatalf("saveCache failed: %v", err)
 	}
 
-	// 2. Load valid cache
 	loaded, ok := loadValidCache(cacheFile, DefaultCacheTTL)
 	if !ok {
 		t.Fatalf("loadValidCache failed to load fresh cache")
@@ -148,13 +146,11 @@ func TestAppCacheLifecycle(t *testing.T) {
 		t.Fatalf("unexpected loaded cache contents: %+v", loaded)
 	}
 
-	// 3. Expired cache check
 	_, expiredOk := loadValidCache(cacheFile, -1*time.Minute)
 	if expiredOk {
 		t.Errorf("expected expired cache to return false")
 	}
 
-	// 4. Invalidate when bundle directory mod time changes
 	futureTime := time.Now().Add(5 * time.Second)
 	_ = os.Chtimes(appPath, futureTime, futureTime)
 	_, modOk := loadValidCache(cacheFile, DefaultCacheTTL)

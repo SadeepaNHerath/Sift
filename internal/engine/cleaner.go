@@ -362,13 +362,11 @@ func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger, 
 				continue
 			}
 
-			// Validate safety
 			if err := core.ValidatePathForDeletion(normPath); err != nil {
 				report.Failed = append(report.Failed, core.FailedItem{Path: normPath, Error: err})
 				continue
 			}
 
-			// Check existence
 			if _, err := os.Lstat(normPath); err != nil {
 				report.Failed = append(report.Failed, core.FailedItem{Path: normPath, Error: err})
 				continue
@@ -391,7 +389,6 @@ func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger, 
 		return report, nil
 	}
 
-	// Actual removal
 	trashDir := filepath.Join(core.GetHomeDir(), ".Trash")
 	for _, itm := range cat.Items {
 		normPath, err := core.NormalizePath(itm.Path)
@@ -400,18 +397,15 @@ func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger, 
 			continue
 		}
 
-		// Layer 1-4 Safety checks
 		if err := core.ValidatePathForDeletion(normPath); err != nil {
 			report.Failed = append(report.Failed, core.FailedItem{Path: normPath, Error: err})
 			continue
 		}
 
-		// Check existence
 		if _, err := os.Lstat(normPath); err != nil {
 			continue
 		}
 
-		// Compute actual size if missing
 		sz := itm.Size
 		if sz <= 0 {
 			if actualSize, err := core.FileSize(normPath); err == nil {
@@ -419,7 +413,6 @@ func CleanCategoryExecute(cat *CleanCategory, dryRun bool, logger *core.Logger, 
 			}
 		}
 
-		// Execute deletion via core.SafeRemove
 		err = core.SafeRemove(normPath)
 		if err != nil {
 			report.Failed = append(report.Failed, core.FailedItem{Path: normPath, Error: err})
@@ -472,11 +465,7 @@ func executeCompanionPrune(catID string, allowDocker bool) {
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Category Scanners
-// -----------------------------------------------------------------------------
-
-// 1. User Essentials: User caches (~/Library/Caches), Logs (~/Library/Logs), CrashReports, Trash
+// scanUserEssentials inspects user caches, logs, crash reports, and trash.
 func scanUserEssentials(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -521,7 +510,7 @@ func scanUserEssentials(cat *CleanCategory, wl *core.Whitelist, seen map[string]
 	}
 }
 
-// 2. App Caches: QuickLook thumbnail caches, icon caches, App Store download caches
+// scanAppCaches scans QuickLook thumbnail caches, icon caches, and download caches.
 func scanAppCaches(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -568,8 +557,7 @@ func scanAppCaches(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool)
 	}
 }
 
-// 3. Browsers: Safari, Chrome, Firefox, Arc, Brave, Edge, Opera, Vivaldi
-// STRICTLY PRESERVES history, cookies, bookmarks, and logins!
+// scanBrowsers scans browser caches while strictly preserving history, cookies, bookmarks, and logins.
 func scanBrowsers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -638,7 +626,7 @@ func scanBrowsers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) 
 	}
 }
 
-// 4. Cloud & Office: MS Office temp files, Dropbox/OneDrive/GDrive sync caches
+// scanCloudOffice scans cloud synchronization caches and office suite temporary files.
 func scanCloudOffice(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -677,7 +665,7 @@ func scanCloudOffice(cat *CleanCategory, wl *core.Whitelist, seen map[string]boo
 	}
 }
 
-// 5. Developer Tools: Xcode DerivedData, Archives, iOS DeviceSupport, Simulators, Package managers
+// scanDeveloperTools scans Xcode DerivedData, build archives, iOS DeviceSupport symbols, and package manager caches.
 func scanDeveloperTools(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -717,7 +705,7 @@ func scanDeveloperTools(cat *CleanCategory, wl *core.Whitelist, seen map[string]
 	}
 }
 
-// 6. Homebrew: brew cleanup -s --prune=all
+// scanHomebrew scans Homebrew bottle and formula caches.
 func scanHomebrew(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -729,7 +717,7 @@ func scanHomebrew(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) 
 	addCandidateItem(cat, brewCache, "Homebrew downloaded bottles and formula cache", wl, seen)
 }
 
-// 7. Virtualization: Docker system prune, Podman, Colima, OrbStack caches
+// scanVirtualization scans Docker, Podman, Colima, and OrbStack caches.
 func scanVirtualization(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -754,7 +742,7 @@ func scanVirtualization(cat *CleanCategory, wl *core.Whitelist, seen map[string]
 	}
 }
 
-// 8. Application Support: Orphaned temporary caches and logs
+// scanAppSupport scans temporary caches and logs in Application Support.
 func scanAppSupport(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -778,7 +766,7 @@ func scanAppSupport(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool
 	}
 }
 
-// 9. App Leftovers: Files left behind by previously uninstalled apps
+// scanAppLeftovers identifies residual application state and support folders for uninstalled apps.
 func scanAppLeftovers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -804,13 +792,11 @@ func scanAppLeftovers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bo
 				installedNames[strings.ToLower(stem)] = true
 				installedNames[strings.ToLower(strings.ReplaceAll(stem, " ", ""))] = true
 
-				// Attempt to read Info.plist bundle ID
 				plistPath := filepath.Join(ad, e.Name(), "Contents", "Info.plist")
 				if data, err := os.ReadFile(plistPath); err == nil {
 					if info, err := parseInfoPlist(plistPath); err == nil && info.BundleID != "" {
 						installedBundles[strings.ToLower(info.BundleID)] = true
 					} else {
-						// Simple fallback scan
 						strData := string(data)
 						if idx := strings.Index(strData, "CFBundleIdentifier"); idx != -1 {
 							after := strData[idx:]
@@ -828,7 +814,6 @@ func scanAppLeftovers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bo
 		}
 	}
 
-	// 1. Inspect ~/Library/Saved Application State
 	savedStateDir := filepath.Join(home, "Library", "Saved Application State")
 	if entries, err := os.ReadDir(savedStateDir); err == nil {
 		for _, e := range entries {
@@ -836,12 +821,10 @@ func scanAppLeftovers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bo
 				bundleID := strings.TrimSuffix(e.Name(), ".savedState")
 				lowerID := strings.ToLower(bundleID)
 
-				// Skip Apple components
 				if strings.HasPrefix(lowerID, "com.apple.") || lowerID == "com.apple" {
 					continue
 				}
 
-				// Check if corresponding app is installed
 				if !installedBundles[lowerID] {
 					fullPath := filepath.Join(savedStateDir, e.Name())
 					addCandidateItem(cat, fullPath, fmt.Sprintf("Saved state leftover for uninstalled app %s", bundleID), wl, seen)
@@ -850,7 +833,6 @@ func scanAppLeftovers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bo
 		}
 	}
 
-	// 2. Inspect ~/Library/Application Support for orphaned folders
 	appSupportDir := filepath.Join(home, "Library", "Application Support")
 	systemFolderPrefixes := []string{
 		"apple", "addressbook", "google", "microsoft", "adobe", "mozilla",
@@ -888,7 +870,7 @@ func scanAppLeftovers(cat *CleanCategory, wl *core.Whitelist, seen map[string]bo
 	}
 }
 
-// 10. Device Backups: iOS DeviceBackups (~/Library/Application Support/MobileSync/Backup), IPSW firmware
+// scanDeviceBackups scans iOS device backups and firmware restore images.
 func scanDeviceBackups(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -910,7 +892,7 @@ func scanDeviceBackups(cat *CleanCategory, wl *core.Whitelist, seen map[string]b
 	}
 }
 
-// 11. Time Machine: Local APFS snapshots reporting (tmutil)
+// scanTimeMachine checks for local APFS snapshots via tmutil.
 func scanTimeMachine(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	out, err := core.RunCommandWithTimeout(5*time.Second, "tmutil", "listlocalsnapshots", "/")
 	if err != nil {
@@ -921,9 +903,7 @@ func scanTimeMachine(cat *CleanCategory, wl *core.Whitelist, seen map[string]boo
 	for _, l := range lines {
 		trimmed := strings.TrimSpace(l)
 		if strings.HasPrefix(trimmed, "com.apple.TimeMachine.") {
-			// APFS local snapshot
 			snapshotName := trimmed
-			// Local snapshots can be targeted via tmutil deletelocalsnapshots
 			cat.Items = append(cat.Items, CleanItem{
 				Path:        snapshotName,
 				Size:        0, // Snapshot size is dynamic across APFS blocks
@@ -934,7 +914,7 @@ func scanTimeMachine(cat *CleanCategory, wl *core.Whitelist, seen map[string]boo
 	}
 }
 
-// 12. System Caches: System diagnostics and crash logs (/Library/Logs/DiagnosticReports)
+// scanSystemCaches scans system diagnostic reports and crash logs.
 func scanSystemCaches(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	targets := []struct {
 		pattern string
@@ -953,7 +933,7 @@ func scanSystemCaches(cat *CleanCategory, wl *core.Whitelist, seen map[string]bo
 	}
 }
 
-// 13. Stale Browser Profiles: Headless playwright / puppeteer automation profiles
+// scanBrowserProfiles scans stale automation browser profiles from Playwright and Puppeteer.
 func scanBrowserProfiles(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	home := core.GetHomeDir()
 
@@ -979,7 +959,7 @@ func scanBrowserProfiles(cat *CleanCategory, wl *core.Whitelist, seen map[string
 	}
 }
 
-// 14. AI & LLM Caches: Ollama blobs, Hugging Face hub, LM Studio, Jan, LocalAI, PyTorch kernels, AI worktrees
+// scanAICachesCategory scans local AI and LLM model caches and worktrees.
 func scanAICachesCategory(cat *CleanCategory, wl *core.Whitelist, seen map[string]bool) {
 	targets, err := ScanAICaches()
 	if err != nil {
@@ -989,10 +969,6 @@ func scanAICachesCategory(cat *CleanCategory, wl *core.Whitelist, seen map[strin
 		addCandidateItem(cat, t.Path, fmt.Sprintf("%s (%s)", t.Name, t.Description), wl, seen)
 	}
 }
-
-// -----------------------------------------------------------------------------
-// Helper Routines
-// -----------------------------------------------------------------------------
 
 // expandWildcard expands tilde (~) and glob patterns (*, ?) into a list of absolute paths.
 func expandWildcard(pattern string) []string {
@@ -1024,13 +1000,11 @@ func addCandidateItem(cat *CleanCategory, path string, desc string, wl *core.Whi
 	}
 	seen[normPath] = true
 
-	// Check if path exists
 	fi, err := os.Lstat(normPath)
 	if err != nil {
 		return
 	}
 
-	// Compute size
 	sz, err := core.FileSize(normPath)
 	if err != nil {
 		sz = 0
@@ -1039,7 +1013,6 @@ func addCandidateItem(cat *CleanCategory, path string, desc string, wl *core.Whi
 		sz = fi.Size()
 	}
 
-	// Evaluate 5-layer safety and whitelist
 	safeErr := core.ValidatePathForDeletion(normPath)
 	isWhitelisted := (wl != nil && wl.Contains(normPath))
 	safe := (safeErr == nil) && !isWhitelisted

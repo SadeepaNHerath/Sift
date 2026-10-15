@@ -57,7 +57,6 @@ analyze disk usage, tune system caches, and purge developer artifacts.`,
 	},
 }
 
-// Stub subcommand declarations
 var (
 	cleanCmd = &cobra.Command{
 		Use:   "clean",
@@ -88,7 +87,6 @@ var (
 )
 
 func init() {
-	// Register all subcommands
 	rootCmd.AddCommand(
 		cleanCmd,
 		uninstallCmd,

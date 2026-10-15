@@ -78,17 +78,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	// 1. Confirmation Modal Mode
 	if m.ConfirmingDelete {
 		return m.handleConfirmKey(key)
 	}
 
-	// 2. Search / Live Filter Mode
 	if m.Searching {
 		return m.handleSearchKey(msg, key)
 	}
 
-	// 3. Normal Directory Exploration Mode
 	return m.handleExploreKey(key)
 }
 

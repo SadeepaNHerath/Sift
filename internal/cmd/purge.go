@@ -103,12 +103,10 @@ func runPurge(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Handle dry-run mode
 	if dryRun {
 		return renderPurgeDryRun(cmd, targets, logger)
 	}
 
-	// Interactive TUI mode if attached to TTY and not confirmed via --yes
 	if !yes && core.IsTTY() {
 		selectedTargets, err := runInteractivePurgeSelect(targets, all)
 		if err != nil {
@@ -122,7 +120,6 @@ func runPurge(cmd *cobra.Command, args []string) error {
 	} else if !yes && !core.IsTTY() {
 		return fmt.Errorf("purge requires confirmation: pass --yes/-y to proceed non-interactively, or --dry-run to preview")
 	} else if !all {
-		// Non-interactive without --all: only purge safe targets
 		var safeTargets []engine.PurgeTarget
 		for _, t := range targets {
 			if t.SafeToPurge {
@@ -136,7 +133,6 @@ func runPurge(cmd *cobra.Command, args []string) error {
 		targets = safeTargets
 	}
 
-	// Execute purge
 	report, err := engine.PurgeTargets(targets, false, logger)
 	if err != nil {
 		return fmt.Errorf("purge failed: %w", err)
@@ -202,7 +198,6 @@ func runInteractivePurgeSelect(targets []engine.PurgeTarget, selectAll bool) ([]
 func renderPurgeDryRun(cmd *cobra.Command, targets []engine.PurgeTarget, logger *core.Logger) error {
 	out := cmd.OutOrStdout()
 
-	// Perform dry run engine reporting and logging
 	report, _ := engine.PurgeTargets(targets, true, logger)
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))

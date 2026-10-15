@@ -45,7 +45,6 @@ func TestDefaultInstallerScanDirs(t *testing.T) {
 func TestScanInstallersDirs(t *testing.T) {
 	tempDir := t.TempDir()
 
-	// 1. Direct installer files
 	dmgFile := filepath.Join(tempDir, "Software.dmg")
 	pkgFile := filepath.Join(tempDir, "Update.pkg")
 	mpkgFile := filepath.Join(tempDir, "Bundle.mpkg")
@@ -58,7 +57,6 @@ func TestScanInstallersDirs(t *testing.T) {
 		}
 	}
 
-	// 2. Non-installer files (should be ignored)
 	pdfFile := filepath.Join(tempDir, "manual.pdf")
 	fakeFile := filepath.Join(tempDir, "notes.dmg.txt")
 	if err := os.WriteFile(pdfFile, []byte("pdf"), 0644); err != nil {
@@ -68,19 +66,15 @@ func TestScanInstallersDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 3. Zip file containing .app (should be detected as installer)
 	appZip := filepath.Join(tempDir, "Slack.zip")
 	createTestZip(t, appZip, []string{"Slack.app/Contents/MacOS/Slack", "Slack.app/Contents/Info.plist"})
 
-	// 4. Zip file containing .pkg (should be detected as installer)
 	pkgZip := filepath.Join(tempDir, "Driver.zip")
 	createTestZip(t, pkgZip, []string{"driver_install.pkg", "README.txt"})
 
-	// 5. Zip file containing plain files (should NOT be detected)
 	docZip := filepath.Join(tempDir, "Documents.zip")
 	createTestZip(t, docZip, []string{"report.docx", "data.csv"})
 
-	// 6. Nested installer in subdirectory
 	nestedDir := filepath.Join(tempDir, "subfolder", "downloads")
 	if err := os.MkdirAll(nestedDir, 0755); err != nil {
 		t.Fatal(err)
@@ -167,7 +161,6 @@ func TestRemoveInstallers_DryRunAndActual(t *testing.T) {
 		},
 	}
 
-	// 1. Dry run test
 	dryReport, err := RemoveInstallers(files, true, nil)
 	if err != nil {
 		t.Fatalf("dry run RemoveInstallers failed: %v", err)
@@ -178,12 +171,10 @@ func TestRemoveInstallers_DryRunAndActual(t *testing.T) {
 	if dryReport.TotalBytes != int64(len(content)) {
 		t.Errorf("expected total bytes %d, got %d", len(content), dryReport.TotalBytes)
 	}
-	// Verify file still exists on disk
 	if _, err := os.Stat(installerPath); err != nil {
 		t.Fatalf("file should still exist after dry run: %v", err)
 	}
 
-	// 2. Actual removal test
 	logger, _ := core.NewLogger()
 	actualReport, err := RemoveInstallers(files, false, logger)
 	if err != nil {

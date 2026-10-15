@@ -28,11 +28,9 @@ func (m Model) View() string {
 
 	var b strings.Builder
 
-	// 1. Header with System Identity, Health Score Badge, and Cat Mascot
 	b.WriteString(m.renderHeader(width))
 	b.WriteString("\n")
 
-	// 2. Main resource panels
 	halfWidth := (width - 4) / 2
 	if halfWidth < 38 {
 		halfWidth = 38
@@ -63,11 +61,9 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 
-	// 3. Top Processes Table
 	b.WriteString(m.renderProcesses(width - 2))
 	b.WriteString("\n")
 
-	// 4. Footer Help bar
 	b.WriteString(m.renderFooter(width))
 
 	return b.String()

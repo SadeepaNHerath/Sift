@@ -57,7 +57,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Rich TUI rendering
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
 	okBadge := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42")).Render("  ✔ OK      ")
 	warnBadge := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("  ▲ WARNING ")
@@ -111,7 +110,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintln(out)
 
-	// CI Mode Output
 	if doctorCI {
 		for _, check := range report.Results {
 			title := escapeWorkflowCommand(check.Name)
@@ -125,7 +123,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Exit code evaluation
 	if doctorExitCode || doctorCI {
 		if strings.EqualFold(doctorFailOn, "warning") && (report.CritCount > 0 || report.WarnCount > 0) {
 			return fmt.Errorf("doctor check failed with %d critical, %d warnings (threshold: warning)", report.CritCount, report.WarnCount)

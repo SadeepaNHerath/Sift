@@ -112,7 +112,6 @@ func TestAnalyzeCmd_SystemData(t *testing.T) {
 	_ = os.MkdirAll(derivedData, 0755)
 	_ = os.WriteFile(filepath.Join(derivedData, "test.log"), []byte("system data mock"), 0644)
 
-	// 1. JSON mode
 	outStr, err := executeAnalyzeWithArgs([]string{"--system-data", "--json"})
 	if err != nil {
 		t.Fatalf("sf analyze --system-data --json failed: %v", err)
@@ -127,7 +126,6 @@ func TestAnalyzeCmd_SystemData(t *testing.T) {
 		t.Errorf("expected non-zero TotalBytes in system-data report")
 	}
 
-	// 2. Table / human output mode
 	outStr, err = executeAnalyzeWithArgs([]string{"--system-data"})
 	if err != nil {
 		t.Fatalf("sf analyze --system-data failed: %v", err)

@@ -41,7 +41,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 	}
 
 	targets := []systemDataTarget{
-		// 1. Developer Tooling
 		{
 			category:  "Developer",
 			name:      "Xcode DerivedData",
@@ -96,7 +95,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 			getPath:   func(h string) string { return filepath.Join(h, ".m2", "repository") },
 		},
 
-		// 2. Virtual Machines & Containers
 		{
 			category:  "Virtualization",
 			name:      "Docker Desktop Data",
@@ -116,7 +114,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 			getPath:   func(h string) string { return filepath.Join(h, ".colima") },
 		},
 
-		// 3. Package Managers
 		{
 			category:  "Package Managers",
 			name:      "Homebrew Downloads",
@@ -142,7 +139,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 			getPath:   func(h string) string { return filepath.Join(h, "Library", "Caches", "CocoaPods") },
 		},
 
-		// 4. OS Logs & Diagnostics
 		{
 			category:  "System & Logs",
 			name:      "User Logs & Diagnostics",
@@ -161,7 +157,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 	var items []SystemDataItem
 	var wg sync.WaitGroup
 
-	// Scan fixed targets
 	for _, target := range targets {
 		p := target.getPath(home)
 		if p == "" {
@@ -191,7 +186,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 		}(target, p)
 	}
 
-	// Scan user Trash
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -210,7 +204,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 		}
 	}()
 
-	// Scan top Application Support and Cache directories
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -264,7 +257,6 @@ func ScanSystemData() (*SystemDataReport, error) {
 
 	wg.Wait()
 
-	// Sort items descending by size
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Size > items[j].Size
 	})

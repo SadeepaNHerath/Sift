@@ -78,7 +78,6 @@ func runPrivacy(cmd *cobra.Command, args []string) error {
 		targets = filtered
 	}
 
-	// 1. JSON mode
 	if privacyJSON {
 		encoder := json.NewEncoder(out)
 		encoder.SetIndent("", "  ")
@@ -90,12 +89,10 @@ func runPrivacy(cmd *cobra.Command, args []string) error {
 		defer logger.Close()
 	}
 
-	// 2. Dry run preview
 	if privacyDryRun {
 		return renderPrivacyDryRun(cmd, targets, logger)
 	}
 
-	// 3. Interactive multi-select mode if attached to TTY
 	if !privacyYes && core.IsTTY() && !privacyClipboardOnly && !privacyRecentOnly && !privacyDiagnosticOnly && !privacyBrowserOnly {
 		selectedTargets, err := runInteractivePrivacySelect(targets)
 		if err != nil {
@@ -110,7 +107,6 @@ func runPrivacy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("privacy wiping requires confirmation: pass --yes/-y to execute non-interactively, or --dry-run to preview")
 	}
 
-	// 4. Execute wiping
 	report, err := engine.WipePrivacyTargets(targets, false, logger)
 	if err != nil {
 		return fmt.Errorf("privacy wipe failed: %w", err)

@@ -27,31 +27,25 @@ func (m Model) View() string {
 		w = 80
 	}
 
-	// 1. Breadcrumb Bar & Storage Usage Header
 	sb.WriteString(m.renderBreadcrumbBar(w))
 	sb.WriteString("\n")
 
-	// 2. Mode Title / Subheader
 	sb.WriteString(m.renderSubheader())
 	sb.WriteString("\n\n")
 
-	// 3. Tabular Item List
 	sb.WriteString(m.renderTable(w))
 	sb.WriteString("\n")
 
-	// 4. Search input or Filter notice
 	if m.Searching {
 		sb.WriteString(m.Styles.SearchPrompt.Render("  Search: /") + m.Styles.SearchQuery.Render(m.SearchQuery+"█") + "\n")
 	} else if m.SearchQuery != "" {
 		sb.WriteString(m.Styles.Help.Render(fmt.Sprintf("  Filter: %q (press / to edit, Esc to clear)", m.SearchQuery)) + "\n")
 	}
 
-	// 5. Status line (if any)
 	if m.StatusMsg != "" {
 		sb.WriteString("  " + m.Styles.StatusMsg.Render(m.StatusMsg) + "\n")
 	}
 
-	// 6. Help footer with keybindings
 	sb.WriteString(m.renderFooter())
 
 	return sb.String()

@@ -337,21 +337,18 @@ func IsSensitiveUserPath(path string) bool {
 
 	rel = filepath.Clean(rel)
 
-	// 1. Recursive sensitive user directories (both the folder and any child path)
 	for _, prefix := range sensitiveUserRecursivePrefixes {
 		if rel == prefix || strings.HasPrefix(rel, prefix+"/") {
 			return true
 		}
 	}
 
-	// 2. Sensitive user files
 	for _, file := range sensitiveUserFiles {
 		if rel == file {
 			return true
 		}
 	}
 
-	// 3. User personal directories (the directories themselves, NOT their contents)
 	for _, dir := range sensitiveUserExactDirs {
 		if rel == dir {
 			return true
@@ -369,33 +366,27 @@ func IsSensitiveUserPath(path string) bool {
 // Layer 4: Apple Bundle ID Protection (com.apple.* components).
 // Layer 5: Ancestor and target symlink resolution to prevent traversal via symlink redirection.
 func ValidatePathForDeletion(path string) error {
-	// Check 1: Non-empty path
 	if strings.TrimSpace(path) == "" {
 		return ErrEmptyPath
 	}
 
-	// Check 3: No control characters
 	if hasControlCharacters(path) {
 		return ErrControlCharacters
 	}
 
-	// Check 2: No path traversal components (/../)
 	if hasPathTraversal(path) {
 		return ErrPathTraversal
 	}
 
-	// Normalize tilde expansion if present
 	normalized, err := NormalizePath(path)
 	if err != nil {
 		return err
 	}
 
-	// Check 1 (continued): Path must be absolute
 	if !filepath.IsAbs(normalized) {
 		return ErrNotAbsolutePath
 	}
 
-	// Layer 2: System Denylist check
 	if normalized == "/" {
 		return ErrSystemProtectedPath
 	}
@@ -409,17 +400,14 @@ func ValidatePathForDeletion(path string) error {
 		return ErrSystemProtectedPath
 	}
 
-	// Layer 3: Sensitive User Path Denylist check
 	if IsSensitiveUserPath(normalized) {
 		return ErrSensitiveUserPath
 	}
 
-	// Layer 4: Apple Bundle ID Protection check on path segments
 	if hasAppleBundleComponent(normalized) {
 		return ErrAppleBundleProtected
 	}
 
-	// Check user whitelist if configured (fail-closed if file exists but cannot be read)
 	wl, err := LoadWhitelist()
 	if err != nil && !os.IsNotExist(err) && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("safety check blocked: failed to verify whitelist: %w", err)
@@ -428,15 +416,13 @@ func ValidatePathForDeletion(path string) error {
 		return ErrUserWhitelisted
 	}
 
-	// Layer 1 & 5: Walk ancestor symlinks to prevent symlinked parent traversal.
-	// Check that ancestors do not redirect out of safe boundaries into protected system or user trees.
+	// Walk ancestor symlinks to prevent symlinked parent traversal.
 	curr := filepath.Dir(normalized)
 	for curr != "/" && curr != "." {
 		if info, err := os.Lstat(curr); err == nil {
 			if info.Mode()&os.ModeSymlink != 0 {
 				resolvedParent, err := filepath.EvalSymlinks(curr)
 				if err == nil && !isDarwinRootAlias(curr, resolvedParent) {
-					// Check if resolved parent is a protected tree
 					if IsSystemPath(resolvedParent) || IsSensitiveUserPath(resolvedParent) {
 						return ErrAncestorSymlinkProtected
 					}
@@ -460,7 +446,6 @@ func ValidatePathForDeletion(path string) error {
 		curr = parent
 	}
 
-	// Layer 1 Check 4: Resolve symlink leaf - real target must not be in protected areas
 	if lstat, err := os.Lstat(normalized); err == nil {
 		if lstat.Mode()&os.ModeSymlink != 0 {
 			realTarget, err := filepath.EvalSymlinks(normalized)

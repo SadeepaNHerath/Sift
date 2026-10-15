@@ -65,23 +65,19 @@ func runClean(cmd *cobra.Command, args []string) error {
 	showWl, _ := cmd.Flags().GetBool("whitelist")
 	extVol, _ := cmd.Flags().GetString("external")
 
-	// 1. Handle --whitelist flag
 	if showWl {
 		return handleWhitelistDisplay()
 	}
 
-	// 2. Load user whitelist
 	wl, err := core.LoadWhitelist()
 	if err != nil {
 		wl = nil
 	}
 
-	// 3. Handle --external volume cleanup
 	if extVol != "" {
 		return handleExternalVolumeClean(extVol, dryRun, yes, wl)
 	}
 
-	// 4. Handle standalone --trash or --snapshots flags
 	trashFlag, _ := cmd.Flags().GetBool("trash")
 	snapshotsFlag, _ := cmd.Flags().GetBool("snapshots")
 
@@ -93,7 +89,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return handleSnapshotsClean(dryRun, yes)
 	}
 
-	// 5. Standard macOS Deep Cleaner
 	modelsFlag, _ := cmd.Flags().GetBool("models")
 	aiFlag, _ := cmd.Flags().GetBool("ai")
 	if modelsFlag || aiFlag {
@@ -107,7 +102,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("scan failed: %w", err)
 	}
 
-	// Filter categories if specific args were passed (e.g. sf clean dev-tools browsers or --models)
 	if len(args) > 0 {
 		categories = filterCategoriesByArgs(categories, args)
 		if len(categories) == 0 {
@@ -115,7 +109,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 5. Interactive TUI multi-select mode if attached to TTY and not confirmed via --yes
 	if !yes && core.IsTTY() && len(args) == 0 {
 		selectedCategories, err := runInteractiveCategorySelect(categories, all)
 		if err != nil {
@@ -127,7 +120,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		}
 		categories = selectedCategories
 	} else if !all && len(args) == 0 {
-		// Non-interactive default: filter by EnabledByDefault
 		var defaults []*engine.CleanCategory
 		for _, c := range categories {
 			if c.EnabledByDefault {
@@ -137,7 +129,6 @@ func runClean(cmd *cobra.Command, args []string) error {
 		categories = defaults
 	}
 
-	// 6. Execute cleanup or dry run
 	logger, logErr := core.NewLogger()
 	if logErr == nil {
 		defer logger.Close()
@@ -449,7 +440,6 @@ func executeCleanSummary(categories []*engine.CleanCategory, logger *core.Logger
 	for _, cat := range categories {
 		meta, _ := engine.GetCategoryMeta(cat.ID)
 
-		// Print visual spinner / active category marker
 		rep, err := engine.CleanCategoryExecute(cat, false, logger, dockerPrune...)
 		if err != nil {
 			failMark := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555")).Render("✗")

@@ -247,7 +247,6 @@ func TestFormatBytes(t *testing.T) {
 func TestFileSize_FileAndDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 
-	// 1. Regular file
 	filePayload := []byte(strings.Repeat("a", 500))
 	singleFile := filepath.Join(tempDir, "single.dat")
 	if err := os.WriteFile(singleFile, filePayload, 0644); err != nil {
@@ -262,7 +261,6 @@ func TestFileSize_FileAndDirectory(t *testing.T) {
 		t.Errorf("FileSize(singleFile) = %d; want 500", size)
 	}
 
-	// 2. Directory hierarchy
 	treeDir := filepath.Join(tempDir, "tree")
 	if err := os.MkdirAll(filepath.Join(treeDir, "sub", "deep"), 0755); err != nil {
 		t.Fatalf("failed to create tree dirs: %v", err)
@@ -280,7 +278,6 @@ func TestFileSize_FileAndDirectory(t *testing.T) {
 		t.Errorf("FileSize(treeDir) = %d; want 1000", dirSize)
 	}
 
-	// 3. Empty directory
 	emptyDir := filepath.Join(tempDir, "empty")
 	_ = os.Mkdir(emptyDir, 0755)
 	emptySize, err := FileSize(emptyDir)
@@ -291,7 +288,6 @@ func TestFileSize_FileAndDirectory(t *testing.T) {
 		t.Errorf("FileSize(emptyDir) = %d; want 0", emptySize)
 	}
 
-	// 4. Missing path
 	if _, err := FileSize(filepath.Join(tempDir, "missing.dat")); err == nil {
 		t.Fatalf("expected error on missing path, got nil")
 	}
@@ -304,30 +300,25 @@ func TestTrashCollisionHandling(t *testing.T) {
 	base := "document.txt"
 	initial := filepath.Join(tempTrash, base)
 
-	// Step 1: No file exists yet -> resolves to initial
 	cand1 := ResolveTrashCollision(tempTrash, base)
 	if cand1 != initial {
 		t.Fatalf("expected initial path %q, got %q", initial, cand1)
 	}
 
-	// Create initial file
 	if err := os.WriteFile(initial, []byte("version 1"), 0644); err != nil {
 		t.Fatalf("failed to create initial file: %v", err)
 	}
 
-	// Step 2: First collision -> resolves to "document 1.txt"
 	cand2 := ResolveTrashCollision(tempTrash, base)
 	expectedCand2 := filepath.Join(tempTrash, "document 1.txt")
 	if cand2 != expectedCand2 {
 		t.Fatalf("expected collision path %q, got %q", expectedCand2, cand2)
 	}
 
-	// Create first collision file
 	if err := os.WriteFile(cand2, []byte("version 2"), 0644); err != nil {
 		t.Fatalf("failed to create collision file: %v", err)
 	}
 
-	// Step 3: Second collision -> resolves to "document 2.txt"
 	cand3 := ResolveTrashCollision(tempTrash, base)
 	expectedCand3 := filepath.Join(tempTrash, "document 2.txt")
 	if cand3 != expectedCand3 {
@@ -457,7 +448,6 @@ func TestGetTrashSizeAndEmptyTrash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 1. Initial size should be 0
 	count, total, err := GetTrashSize()
 	if err != nil {
 		t.Fatalf("GetTrashSize failed: %v", err)
@@ -466,7 +456,6 @@ func TestGetTrashSizeAndEmptyTrash(t *testing.T) {
 		t.Errorf("expected empty trash, got count=%d, total=%d", count, total)
 	}
 
-	// 2. Add some mock trash items (5 bytes + 5 bytes = 10 bytes)
 	_ = os.WriteFile(filepath.Join(trashDir, "doc.txt"), []byte("hello"), 0644)
 	subDir := filepath.Join(trashDir, "subfolder")
 	_ = os.Mkdir(subDir, 0755)
@@ -480,7 +469,6 @@ func TestGetTrashSizeAndEmptyTrash(t *testing.T) {
 		t.Errorf("expected count=2, total=10, got count=%d, total=%d", count, total)
 	}
 
-	// 3. Empty trash
 	removed, freed, err := EmptyTrash()
 	if err != nil {
 		t.Fatalf("EmptyTrash failed: %v", err)
@@ -489,7 +477,6 @@ func TestGetTrashSizeAndEmptyTrash(t *testing.T) {
 		t.Errorf("expected removed=2, freed=10, got removed=%d, freed=%d", removed, freed)
 	}
 
-	// 4. Verify trash is now empty
 	count, total, _ = GetTrashSize()
 	if count != 0 || total != 0 {
 		t.Errorf("expected empty trash after EmptyTrash, got count=%d, total=%d", count, total)

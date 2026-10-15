@@ -11,7 +11,6 @@ import (
 func (m Model) View() string {
 	var sb strings.Builder
 
-	// 1. Title bar
 	selectedCount := 0
 	for _, it := range m.items {
 		if it.Selected {
@@ -33,7 +32,6 @@ func (m Model) View() string {
 	sb.WriteString(m.styles.Title.Render(titleText))
 	sb.WriteString("\n")
 
-	// 2. Visible items
 	if len(m.filtered) == 0 {
 		sb.WriteString(m.styles.Help.Render("  (no matching items)"))
 		sb.WriteString("\n")
@@ -122,7 +120,6 @@ func (m Model) View() string {
 		}
 	}
 
-	// 3. Search bar
 	if m.searching {
 		sb.WriteString("\n")
 		sb.WriteString(m.styles.Search.Render(fmt.Sprintf("Search: /%s█", m.searchQuery)))
@@ -133,7 +130,6 @@ func (m Model) View() string {
 		sb.WriteString("\n")
 	}
 
-	// 4. Help footer
 	sb.WriteString("\n")
 	var helpText string
 	if m.searching {

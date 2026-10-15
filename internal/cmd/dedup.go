@@ -85,7 +85,6 @@ func runDedup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("duplicate search failed: %w", err)
 	}
 
-	// 1. JSON output mode
 	if dedupJSON {
 		encoder := json.NewEncoder(out)
 		encoder.SetIndent("", "  ")
@@ -102,12 +101,10 @@ func runDedup(cmd *cobra.Command, args []string) error {
 		defer logger.Close()
 	}
 
-	// 2. Dry run preview
 	if dedupDryRun {
 		return renderDedupDryRun(cmd, groups, dedupKeepNewest, action, logger)
 	}
 
-	// 3. Interactive TUI selection (Trash mode)
 	if !dedupYes && core.IsTTY() && !dedupKeepOldest && !dedupKeepNewest && action == engine.ActionTrash {
 		m := tuiDedup.New(groups)
 		p := tea.NewProgram(m)
@@ -137,12 +134,10 @@ func runDedup(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// 4. Non-interactive guard
 	if !dedupYes && !core.IsTTY() {
 		return fmt.Errorf("dedup requires confirmation: pass --yes/-y along with --keep-oldest or --keep-newest to run non-interactively")
 	}
 
-	// 5. APFS Clone or Hardlink Resolution
 	if action == engine.ActionClone {
 		result, err := engine.CloneDuplicates(groups, dedupKeepNewest, false, logger)
 		if err != nil {
@@ -161,16 +156,13 @@ func runDedup(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// 6. Automated Trash resolution (keep-oldest or keep-newest)
 	var pathsToTrash []string
 	for _, g := range groups {
 		if dedupKeepNewest {
-			// Keep newest (last item), trash older copies
 			for i := 0; i < len(g.Files)-1; i++ {
 				pathsToTrash = append(pathsToTrash, g.Files[i].Path)
 			}
 		} else {
-			// Keep oldest (first item), trash newer copies
 			for i := 1; i < len(g.Files); i++ {
 				pathsToTrash = append(pathsToTrash, g.Files[i].Path)
 			}

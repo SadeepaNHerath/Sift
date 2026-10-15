@@ -67,7 +67,7 @@ func TestCompositeConfidence(t *testing.T) {
 }
 
 func TestEvaluateConfidence_PromotionRules(t *testing.T) {
-	// 1. Weak signals alone NEVER promote to High
+	// Weak signals alone NEVER promote to High
 	signalsWeak := []Signal{SignalAppNameInPath, SignalVendorPrefix}
 	scoreWeak := CompositeConfidence(signalsWeak) // 0.58
 	confWeak := EvaluateConfidence(scoreWeak, signalsWeak)
@@ -83,7 +83,7 @@ func TestEvaluateConfidence_PromotionRules(t *testing.T) {
 		t.Errorf("AppNameInPath alone (score %f) expected Low, got %s", scoreLow, confLow)
 	}
 
-	// 2. High requires ExactBundleID or ContainerBundleID
+	// High requires ExactBundleID or ContainerBundleID
 	// LaunchdProgramPath (0.85) has score 0.85 >= 0.80, but lacks ExactBundleID and ContainerBundleID
 	signalsLaunchd := []Signal{SignalLaunchdProgramPath}
 	scoreLaunchd := CompositeConfidence(signalsLaunchd)
@@ -136,7 +136,6 @@ func TestFindAppResourcesWithRoots(t *testing.T) {
 		Path:       filepath.Join(tempDir, "MockStudio.app"),
 	}
 
-	// 1. Matching resources
 	// Application Support folder
 	asPath := filepath.Join(appSupportDir, "com.mockcompany.studio")
 	_ = os.Mkdir(asPath, 0755)
@@ -174,7 +173,6 @@ func TestFindAppResourcesWithRoots(t *testing.T) {
 	receiptPath := filepath.Join(receiptsDir, "com.mockcompany.studio.bom")
 	_ = os.WriteFile(receiptPath, []byte("receipt"), 0644)
 
-	// 2. Unrelated resource (must NOT be attributed)
 	otherPath := filepath.Join(appSupportDir, "com.unrelated.tool")
 	_ = os.Mkdir(otherPath, 0755)
 

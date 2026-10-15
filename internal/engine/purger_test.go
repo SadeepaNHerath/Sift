@@ -211,7 +211,6 @@ func TestScanPurgeTargets_GitStatus(t *testing.T) {
 	_ = exec.Command("git", "-C", tempDir, "add", ".gitignore").Run()
 	_ = exec.Command("git", "-C", tempDir, "commit", "-m", "ignore node_modules").Run()
 
-	// 1. Scan when git repo is clean
 	ClearGitCache()
 	targets, err := ScanPurgeTargets([]string{tempDir}, 0, false)
 	if err != nil {
@@ -230,7 +229,6 @@ func TestScanPurgeTargets_GitStatus(t *testing.T) {
 		t.Errorf("expected clean git repo target to be safe to purge")
 	}
 
-	// 2. Make working tree dirty (uncommitted file)
 	dirtyFile := filepath.Join(tempDir, "dirty.txt")
 	if err := os.WriteFile(dirtyFile, []byte("uncommitted change"), 0644); err != nil {
 		t.Fatal(err)
@@ -278,7 +276,6 @@ func TestPurgeTargets_DryRunAndActual(t *testing.T) {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
 
-	// 1. Dry run
 	dryReport, err := PurgeTargets(targets, true, nil)
 	if err != nil {
 		t.Fatalf("dry run failed: %v", err)
@@ -289,12 +286,10 @@ func TestPurgeTargets_DryRunAndActual(t *testing.T) {
 	if dryReport.TotalBytes <= 0 {
 		t.Errorf("expected positive total bytes in dry run, got %d", dryReport.TotalBytes)
 	}
-	// Verify directory still exists after dry run
 	if _, err := os.Stat(distDir); err != nil {
 		t.Fatalf("dist directory should still exist after dry run: %v", err)
 	}
 
-	// 2. Actual purge
 	actualReport, err := PurgeTargets(targets, false, nil)
 	if err != nil {
 		t.Fatalf("actual purge failed: %v", err)

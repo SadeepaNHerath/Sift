@@ -106,7 +106,6 @@ func TestCleanCmd_DryRun(t *testing.T) {
 		t.Errorf("expected dry run header in output, got: %s", out)
 	}
 
-	// File must NOT be deleted
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Fatalf("CRITICAL: sf clean --dry-run deleted test file %s", testFile)
 	}
@@ -133,7 +132,6 @@ func TestCleanCmd_ExecuteWithYes(t *testing.T) {
 		t.Errorf("expected summary in output, got: %s", out)
 	}
 
-	// File should be moved to trash
 	if _, err := os.Stat(testFile); !os.IsNotExist(err) {
 		t.Errorf("expected file %s to be removed, but it still exists", testFile)
 	}
@@ -187,7 +185,6 @@ func TestCleanCmd_Trash(t *testing.T) {
 	_ = os.MkdirAll(trashDir, 0755)
 	_ = os.WriteFile(filepath.Join(trashDir, "trash.txt"), []byte("sample trash"), 0644)
 
-	// Dry run
 	out, err := executeCleanWithArgs([]string{"--trash", "--dry-run"})
 	if err != nil {
 		t.Fatalf("sf clean --trash --dry-run failed: %v", err)
@@ -196,7 +193,6 @@ func TestCleanCmd_Trash(t *testing.T) {
 		t.Errorf("expected dry-run trash count, got: %s", out)
 	}
 
-	// Execution with yes
 	out, err = executeCleanWithArgs([]string{"--trash", "--yes"})
 	if err != nil {
 		t.Fatalf("sf clean --trash --yes failed: %v", err)
@@ -205,7 +201,6 @@ func TestCleanCmd_Trash(t *testing.T) {
 		t.Errorf("expected emptied trash message, got: %s", out)
 	}
 
-	// Verify file is gone
 	if _, err := os.Stat(filepath.Join(trashDir, "trash.txt")); !os.IsNotExist(err) {
 		t.Errorf("expected trash file to be deleted, but still exists")
 	}
@@ -214,12 +209,10 @@ func TestCleanCmd_Trash(t *testing.T) {
 func TestCleanCmd_Snapshots(t *testing.T) {
 	_ = setupTestHome(t)
 
-	// Dry run with --snapshots
 	out, err := executeCleanWithArgs([]string{"--snapshots", "--dry-run"})
 	if err != nil {
 		t.Fatalf("sf clean --snapshots --dry-run failed: %v", err)
 	}
-	// Either found snapshots or no snapshots found
 	if !strings.Contains(out, "snapshots") {
 		t.Errorf("expected snapshots mention in output, got: %s", out)
 	}

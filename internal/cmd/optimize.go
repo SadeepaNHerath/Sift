@@ -45,14 +45,12 @@ func runOptimize(cmd *cobra.Command, args []string) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 	showWl, _ := cmd.Flags().GetBool("whitelist")
 
-	// 1. Handle --whitelist flag
 	if showWl {
 		return handleWhitelistDisplay()
 	}
 
 	tasks := engine.TaskCatalog()
 
-	// 2. Filter tasks if specific arguments were passed (e.g. sf optimize dns sqlite)
 	if len(args) > 0 {
 		var filtered []engine.OptimizeTask
 		argMap := make(map[string]bool)
@@ -72,7 +70,6 @@ func runOptimize(cmd *cobra.Command, args []string) error {
 		tasks = filtered
 	}
 
-	// 3. Interactive TUI multi-select mode if attached to TTY and not confirmed via --yes
 	if !yes && core.IsTTY() && len(args) == 0 {
 		selectedTasks, err := runInteractiveTaskSelect(tasks, all)
 		if err != nil {
@@ -84,17 +81,14 @@ func runOptimize(cmd *cobra.Command, args []string) error {
 		}
 		tasks = selectedTasks
 	} else if !yes && !core.IsTTY() && len(args) == 0 && !all {
-		// Non-interactive default without --yes: preview tasks safely
 		dryRun = true
 	}
 
-	// 4. Initialize forensic logger
 	logger, logErr := core.NewLogger()
 	if logErr == nil {
 		defer logger.Close()
 	}
 
-	// 5. Execute dry-run preview or live tasks
 	if dryRun {
 		return executeOptimizeDryRun(tasks, logger)
 	}

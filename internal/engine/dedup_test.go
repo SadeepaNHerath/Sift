@@ -144,7 +144,6 @@ func TestCloneDuplicates_LiveAPFS(t *testing.T) {
 		t.Fatalf("expected 1 duplicate group, got %d", len(groups))
 	}
 
-	// 1. Test Dry Run
 	dryResult, err := CloneDuplicates(groups, false, true, nil)
 	if err != nil {
 		t.Fatalf("CloneDuplicates dry run failed: %v", err)
@@ -153,7 +152,6 @@ func TestCloneDuplicates_LiveAPFS(t *testing.T) {
 		t.Errorf("expected 1 processed in dry run, got %d", dryResult.ProcessedFiles)
 	}
 
-	// 2. Test Live Clone Execution
 	liveResult, err := CloneDuplicates(groups, false, false, nil)
 	if err != nil {
 		t.Fatalf("CloneDuplicates live failed: %v", err)

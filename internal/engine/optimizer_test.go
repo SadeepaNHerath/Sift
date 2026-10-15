@@ -97,7 +97,6 @@ func TestRunTask_DSStore_Live(t *testing.T) {
 func TestRunTask_Launchd_AuditAndRemove(t *testing.T) {
 	tempDir := t.TempDir()
 
-	// 1. Create a broken LaunchAgent plist pointing to non-existent executable
 	brokenPlistContent := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -115,7 +114,6 @@ func TestRunTask_Launchd_AuditAndRemove(t *testing.T) {
 		t.Fatalf("failed to write broken plist: %v", err)
 	}
 
-	// 2. Create a valid LaunchAgent plist pointing to /bin/sh
 	validPlistContent := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

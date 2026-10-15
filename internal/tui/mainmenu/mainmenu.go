@@ -159,13 +159,11 @@ func (m Model) View() string {
 
 	var b strings.Builder
 
-	// 1. ASCII Banner
 	b.WriteString(bannerStyle.Render(asciiBanner))
 	b.WriteString("\n")
 	b.WriteString(versionBadgeStyle.Render(fmt.Sprintf("  v%s • Terminal macOS maintenance toolkit", m.version)))
 	b.WriteString("\n\n")
 
-	// 2. Disk color calculation
 	var diskColor lipgloss.Color
 	switch {
 	case m.sys.DiskPct >= 90.0:
@@ -177,7 +175,6 @@ func (m Model) View() string {
 	}
 	diskUsageStyle := lipgloss.NewStyle().Bold(true).Foreground(diskColor)
 
-	// 3. System summary box (responsive to width)
 	trashCompact := ""
 	trashFull := ""
 	if m.sys.TrashSize != "" {
@@ -224,11 +221,9 @@ func (m Model) View() string {
 	b.WriteString(boxStyle.Render(summaryContent))
 	b.WriteString("\n\n")
 
-	// 4. Menu Title
 	b.WriteString(menuTitleStyle.Render("  Shortcut Commands:"))
 	b.WriteString("\n\n")
 
-	// 5. Menu Items
 	for i, itm := range m.items {
 		// Use fixed width for command name column to align emojis cleanly
 		nameCol := fmt.Sprintf("%-12s", fmt.Sprintf("%s %s", itm.Icon, itm.Name))
@@ -252,7 +247,6 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 
-	// 6. Footer Navigation Help
 	b.WriteString("\n")
 	b.WriteString(footerStyle.Render("  ↑/k Up  •  ↓/j Down  •  1-0 Quick Select  •  ↵ Enter Launch  •  q/Esc Quit"))
 	b.WriteString("\n")

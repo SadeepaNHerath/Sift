@@ -51,22 +51,18 @@ func runTouchID(cmd *cobra.Command, args []string) error {
 		defer logger.Close()
 	}
 
-	// 1. Explicit --status flag
 	if statusOnly {
 		return displayTouchIDStatus()
 	}
 
-	// 2. Explicit --enable flag
 	if enable {
 		return handleEnableTouchID(logger)
 	}
 
-	// 3. Explicit --disable flag
 	if disable {
 		return handleDisableTouchID(logger)
 	}
 
-	// 4. Interactive guided toggle (or status display if non-interactive)
 	enabled, isSupported, configPath, err := engine.CheckStatus()
 	if err != nil {
 		return fmt.Errorf("failed to query Touch ID status: %w", err)
@@ -76,12 +72,10 @@ func runTouchID(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// If not in a TTY or piped, finish after showing status
 	if !core.IsTTY() {
 		return nil
 	}
 
-	// Interactive prompt to toggle
 	reader := bufio.NewReader(os.Stdin)
 	if enabled {
 		fmt.Print(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("  Touch ID is currently enabled. Disable it? [y/N]: "))

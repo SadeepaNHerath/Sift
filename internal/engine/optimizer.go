@@ -131,17 +131,13 @@ func runTaskDNS(dryRun bool, logger *core.Logger) (TaskOutcome, error) {
 		}, nil
 	}
 
-	// 1. Flush DNS cache
 	flushCmd := exec.Command("dscacheutil", "-flushcache")
 	if out, err := flushCmd.CombinedOutput(); err != nil {
-		// Log warning but continue to mDNSResponder restart if possible
 		_ = out
 	}
 
-	// 2. Restart mDNSResponder
 	killCmd := exec.Command("killall", "-HUP", "mDNSResponder")
 	if err := killCmd.Run(); err != nil {
-		// If running as regular user, try sudo if available
 		sudoKill := exec.Command("sudo", "killall", "-HUP", "mDNSResponder")
 		_ = sudoKill.Run()
 	}
@@ -169,11 +165,9 @@ func runTaskQuickLook(dryRun bool, logger *core.Logger) (TaskOutcome, error) {
 		}, nil
 	}
 
-	// 1. Reset thumbnail cache
 	cmdCache := exec.Command("qlmanage", "-r", "cache")
 	_ = cmdCache.Run()
 
-	// 2. Reset QuickLook server
 	cmdServer := exec.Command("qlmanage", "-r")
 	_ = cmdServer.Run()
 

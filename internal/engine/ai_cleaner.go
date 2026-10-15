@@ -52,7 +52,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 	}
 
 	candidates := []candidate{
-		// 1. Ollama
 		{
 			provider:    ProviderOllama,
 			path:        filepath.Join(home, ".ollama", "models", "blobs"),
@@ -69,14 +68,13 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Ollama model version manifests and tags",
 			subItemScan: false,
 		},
-		// 2. Hugging Face Hub
 		{
 			provider:    ProviderHuggingFace,
 			path:        filepath.Join(home, ".cache", "huggingface", "hub"),
 			name:        "Hugging Face Model Cache",
 			isWeights:   true,
 			description: "Cached model weights and tokenizer files from Hugging Face Hub",
-			subItemScan: true, // We can inspect individual repo folders
+			subItemScan: true,
 		},
 		{
 			provider:    ProviderHuggingFace,
@@ -86,7 +84,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "PyTorch/Transformers compilation and model index cache",
 			subItemScan: false,
 		},
-		// 3. LM Studio
 		{
 			provider:    ProviderLMStudio,
 			path:        filepath.Join(home, ".cache", "lm-studio", "models"),
@@ -103,7 +100,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Legacy LM Studio models storage directory",
 			subItemScan: true,
 		},
-		// 4. Jan
 		{
 			provider:    ProviderJan,
 			path:        filepath.Join(home, "jan", "models"),
@@ -112,7 +108,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Local models downloaded via Jan AI assistant",
 			subItemScan: true,
 		},
-		// 5. LocalAI
 		{
 			provider:    ProviderLocalAI,
 			path:        filepath.Join(home, ".localai", "models"),
@@ -121,7 +116,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Downloaded backend models for LocalAI",
 			subItemScan: false,
 		},
-		// 6. PyTorch & Inductor kernel caches
 		{
 			provider:    ProviderPyTorch,
 			path:        filepath.Join(home, ".cache", "torch", "kernels"),
@@ -138,7 +132,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Intermediate AOTAutograd and Triton compiler artifacts",
 			subItemScan: false,
 		},
-		// 7. vLLM
 		{
 			provider:    ProviderVLLM,
 			path:        filepath.Join(home, ".cache", "vllm"),
@@ -147,7 +140,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Cached compiled attention kernels and engine caches",
 			subItemScan: false,
 		},
-		// 8. Triton
 		{
 			provider:    ProviderTriton,
 			path:        filepath.Join(home, ".triton", "cache"),
@@ -164,7 +156,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			description: "Cached Triton compilation artifacts",
 			subItemScan: false,
 		},
-		// 9. AI Worktrees
 		{
 			provider:    ProviderAIWorktree,
 			path:        filepath.Join(home, ".codex", "worktrees"),
@@ -235,7 +226,6 @@ func ScanAICaches() ([]AICacheTarget, error) {
 			}
 		}
 
-		// Fallback or whole-directory aggregation
 		sz, _ := core.FileSize(cand.path)
 		if sz > 0 {
 			targets = append(targets, AICacheTarget{

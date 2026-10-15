@@ -9,7 +9,6 @@ import (
 func TestParseLaunchService_ValidAndZombie(t *testing.T) {
 	tempDir := t.TempDir()
 
-	// 1. Valid service (binary exists)
 	binPath := filepath.Join(tempDir, "mydaemon")
 	_ = os.WriteFile(binPath, []byte("#!/bin/sh\nexit 0"), 0755)
 
@@ -37,7 +36,6 @@ func TestParseLaunchService_ValidAndZombie(t *testing.T) {
 		t.Errorf("expected IsZombie=false for existing binary")
 	}
 
-	// 2. Zombie service (binary deleted)
 	zombiePlist := filepath.Join(tempDir, "com.example.zombie.plist")
 	zombieXML := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -62,7 +60,6 @@ func TestParseLaunchService_ValidAndZombie(t *testing.T) {
 		t.Errorf("expected IsZombie=true for missing binary")
 	}
 
-	// 3. Remove zombie plist
 	err = RemoveZombiePlist(svc2, nil)
 	if err != nil {
 		t.Fatalf("RemoveZombiePlist failed: %v", err)

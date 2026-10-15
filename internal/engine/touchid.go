@@ -84,19 +84,16 @@ func IsTouchIDSupported() bool {
 		return false
 	}
 
-	// 1. Check bioutil user Touch ID configuration
 	out, err := exec.Command("bioutil", "-r").CombinedOutput()
 	if err == nil && (strings.Contains(string(out), "Biometrics") || strings.Contains(string(out), "Touch ID")) {
 		return true
 	}
 
-	// 2. Check IORegistry for AppleBiometricSensor
 	outIO, errIO := exec.Command("ioreg", "-r", "-c", "AppleBiometricSensor").CombinedOutput()
 	if errIO == nil && strings.Contains(string(outIO), "AppleBiometricSensor") {
 		return true
 	}
 
-	// 3. Check presence of /etc/pam.d/sudo_local.template (Sonoma/Sequoia support indicator)
 	if _, err := os.Stat("/etc/pam.d/sudo_local.template"); err == nil {
 		return true
 	}

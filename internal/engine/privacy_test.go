@@ -12,17 +12,14 @@ func TestScanPrivacyTargets_MockEnvironment(t *testing.T) {
 	_ = os.Setenv("HOME", tempHome)
 	defer func() { _ = os.Setenv("HOME", origHome) }()
 
-	// 1. Mock recent items
 	sharedFileListDir := filepath.Join(tempHome, "Library", "Application Support", "com.apple.sharedfilelist")
 	_ = os.MkdirAll(sharedFileListDir, 0755)
 	_ = os.WriteFile(filepath.Join(sharedFileListDir, "com.apple.LSSharedFileList.ApplicationRecentDocuments.sfl3"), []byte("mock-recent"), 0644)
 
-	// 2. Mock crash report
 	crashDir := filepath.Join(tempHome, "Library", "Logs", "DiagnosticReports")
 	_ = os.MkdirAll(crashDir, 0755)
 	_ = os.WriteFile(filepath.Join(crashDir, "Safari-crash.ips"), []byte("crash-stack-trace"), 0644)
 
-	// 3. Mock Chrome local storage
 	chromeDir := filepath.Join(tempHome, "Library", "Application Support", "Google", "Chrome", "Default", "Local Storage", "leveldb")
 	_ = os.MkdirAll(chromeDir, 0755)
 	_ = os.WriteFile(filepath.Join(chromeDir, "000003.log"), []byte("leveldb-local-storage"), 0644)

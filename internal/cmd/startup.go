@@ -55,7 +55,6 @@ func runStartup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to scan launch services: %w", err)
 	}
 
-	// 1. Handle --toggle flag
 	if startupToggle != "" {
 		for _, s := range services {
 			if strings.EqualFold(s.Label, startupToggle) {
@@ -75,7 +74,6 @@ func runStartup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no launch service found with label %q", startupToggle)
 	}
 
-	// 2. Handle --remove-zombies flag
 	if startupRemoveZombies {
 		var zombies []engine.LaunchService
 		for _, s := range services {
@@ -107,7 +105,6 @@ func runStartup(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// 3. Handle --json flag
 	if startupJSON {
 		if startupZombies {
 			var zombies []engine.LaunchService
@@ -121,12 +118,10 @@ func runStartup(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(out).Encode(services)
 	}
 
-	// 4. Handle --zombies non-interactive listing
 	if startupZombies || !core.IsTTY() {
 		return renderStartupListing(cmd, services, startupZombies)
 	}
 
-	// 5. Interactive Bubble Tea Dashboard
 	m := tuiStartup.New(services)
 	p := tea.NewProgram(m)
 	_, err = p.Run()

@@ -42,40 +42,18 @@ type DoctorReport struct {
 func RunDoctorChecks() (*DoctorReport, error) {
 	report := &DoctorReport{}
 
-	// 1. Full Disk Access Check
 	checkFDA(report)
-
-	// 2. Disk Capacity Pressure Check
 	checkDiskPressure(report)
-
-	// 3. Memory Pressure & Load Check
 	checkMemoryPressure(report)
-
-	// 4. Oversized Caches Check
 	checkCaches(report)
-
-	// 5. Stale Installers Check
 	checkInstallers(report)
-
-	// 6. Orphaned App Leftovers Check
 	checkLeftovers(report)
-
-	// 7. Broken Launch Agents Check
 	checkLaunchAgents(report)
-
-	// 8. Homebrew Health Check
 	checkHomebrew(report)
-
-	// 9. Touch ID for Sudo Check
 	checkTouchID(report)
-
-	// 10. APFS Local Snapshots Check
 	checkAPFSSnapshots(report)
-
-	// 11. User Trash Capacity Check
 	checkTrash(report)
 
-	// Compute totals
 	for _, r := range report.Results {
 		switch r.Severity {
 		case SeverityOK:

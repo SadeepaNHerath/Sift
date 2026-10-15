@@ -81,12 +81,10 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	topFlag, _ := cmd.Flags().GetInt("top")
 
-	// If not connected to a TTY or --json is explicitly set: emit JSON output
 	if !core.IsTTY() || jsonFlag {
 		return runAnalyzeJSON(cmd, absPath, topFlag)
 	}
 
-	// Interactive Bubble Tea TUI
 	var opts []analyze.Option
 	if topFlag > 0 {
 		opts = append(opts, analyze.WithTopCount(topFlag), analyze.WithTopViewInitial(true))
@@ -125,7 +123,6 @@ func runAnalyzeSystemData(cmd *cobra.Command, jsonMode bool) error {
 	fmt.Fprintln(out, headerBox)
 	fmt.Fprintln(out)
 
-	// Category summary
 	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("255")).Render("  Category Subtotals:"))
 	catNames := make([]string, 0, len(report.Categories))
 	for k := range report.Categories {
@@ -138,7 +135,6 @@ func runAnalyzeSystemData(cmd *cobra.Command, jsonMode bool) error {
 	}
 	fmt.Fprintln(out)
 
-	// Item details table
 	headerLine := fmt.Sprintf("  %-28s %-20s %12s   %-22s", "Component", "Category", "Size", "Clean Remedy")
 	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("255")).Render(headerLine))
 	fmt.Fprintln(out, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("  "+strings.Repeat("─", 78)))
@@ -157,7 +153,6 @@ func runAnalyzeSystemData(cmd *cobra.Command, jsonMode bool) error {
 	}
 	fmt.Fprintln(out, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("  "+strings.Repeat("─", 78)))
 
-	// Check local snapshots
 	if snaps, err := engine.ListLocalSnapshots(); err == nil && len(snaps) > 0 {
 		fmt.Fprintln(out)
 		fmt.Fprintf(out, lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
