@@ -107,6 +107,14 @@ Verify your installation:
 sf --version
 ```
 
+> [!TIP]
+> **Upgraded via Homebrew but version didn't change?**
+> If `sf --version` still displays an older version after running `brew upgrade sf`, an older binary (e.g. from an earlier `curl` install) in `~/.local/bin/sf` is likely shadowing Homebrew in your `$PATH`.
+> Run `sf doctor` to diagnose and fix it, or remove the older binary directly:
+> ```bash
+> rm -f ~/.local/bin/sf
+> ```
+
 ---
 
 ## Quick Start Guide

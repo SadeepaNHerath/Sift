@@ -12,6 +12,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+
+	"github.com/SadeepaNHerath/Sift/internal/engine"
 )
 
 var (
@@ -49,6 +51,21 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	currentVer := version
 	if currentVer == "" {
 		currentVer = "dev"
+	}
+
+	// Proactively check for PATH binary shadowing
+	if conflict, _ := engine.DetectBinaryShadowing(); conflict != nil && len(conflict.ShadowedPaths) > 0 {
+		fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("▲ Warning: Multiple Sift ('sf') executables detected in PATH:"))
+		fmt.Fprintf(out, "  • Active:   %s\n", conflict.ActivePath)
+		for _, s := range conflict.ShadowedPaths {
+			fmt.Fprintf(out, "  • Shadowed: %s\n", s)
+		}
+		if conflict.IsHomebrew && !strings.Contains(conflict.ActivePath, "homebrew") && !strings.Contains(conflict.ActivePath, "Cellar") {
+			fmt.Fprintln(out, lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Render(
+				fmt.Sprintf("Your active binary (%s) takes precedence in $PATH and shadows your Homebrew updates.\nTo use the Homebrew version, remove the older binary:\n  rm %s", conflict.ActivePath, conflict.ActivePath),
+			))
+		}
+		fmt.Fprintln(out)
 	}
 
 	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("▸ Sift: Checking GitHub releases for updates..."))

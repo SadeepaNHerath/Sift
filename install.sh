@@ -78,7 +78,18 @@ printf "${GRAY} Terminal-first macOS maintenance & disk analysis toolkit${RESET}
 
 log_info "Detected system: macOS on ${ARCH_LABEL}"
 
-# 2. Determine Installation Directory
+# 2. Check for Homebrew Installation & Determine Target Directory
+if [ -z "${SF_FORCE:-}" ] && [ -z "${SF_INSTALL_DIR:-}" ]; then
+    if command -v brew >/dev/null 2>&1 && brew list sf >/dev/null 2>&1; then
+        log_warn "Sift is currently installed via Homebrew at $(brew --prefix sf 2>/dev/null || echo '/opt/homebrew/opt/sf')."
+        log_info "Upgrading via Homebrew is recommended to prevent duplicate binary shadowing:"
+        printf "  ${CYAN}brew update && brew upgrade sf${RESET}\n\n"
+        printf "To force standalone binary installation anyway, run:\n"
+        printf "  ${CYAN}SF_FORCE=1 curl -fsSL https://raw.githubusercontent.com/%s/main/install.sh | bash${RESET}\n\n" "$REPO"
+        exit 0
+    fi
+fi
+
 if [ -n "${SF_INSTALL_DIR:-}" ]; then
     INSTALL_DIR="$SF_INSTALL_DIR"
 elif [ -w "/usr/local/bin" ]; then
@@ -190,11 +201,21 @@ elif [ "$CURRENT_SHELL" = "fish" ]; then
     "$DEST_BIN" completion fish > "${FISH_COMP_DIR}/sf.fish" 2>/dev/null || true
 fi
 
-# 7. PATH Check
+# 7. PATH Check & Binary Shadowing Verification
 if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
     log_warn "${INSTALL_DIR} is not in your \$PATH."
     printf "  Add it by running:\n"
     printf "    ${CYAN}echo 'export PATH=\"%s:\$PATH\"' >> ~/.%src${RESET}\n\n" "$INSTALL_DIR" "$CURRENT_SHELL"
+fi
+
+ACTIVE_BIN="$(which sf 2>/dev/null || true)"
+if [ -n "$ACTIVE_BIN" ] && [ "$ACTIVE_BIN" != "$DEST_BIN" ]; then
+    log_warn "PATH Shadowing Detected!"
+    printf "  Installed target: %s\n" "$DEST_BIN"
+    printf "  Active in \$PATH:  %s\n" "$ACTIVE_BIN"
+    printf "  Running 'sf' by name will execute '%s' instead of the newly installed version.\n" "$ACTIVE_BIN"
+    printf "  To fix, remove the older binary or adjust your \$PATH:\n"
+    printf "    ${CYAN}rm %s${RESET}\n\n" "$ACTIVE_BIN"
 fi
 
 log_success "Successfully installed Sift ($("$DEST_BIN" --version 2>/dev/null || echo "$TAG")) to ${DEST_BIN}"

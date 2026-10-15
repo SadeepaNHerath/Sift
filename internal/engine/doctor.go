@@ -50,6 +50,7 @@ func RunDoctorChecks() (*DoctorReport, error) {
 	checkLeftovers(report)
 	checkLaunchAgents(report)
 	checkHomebrew(report)
+	checkBinaryShadowing(report)
 	checkTouchID(report)
 	checkAPFSSnapshots(report)
 	checkTrash(report)
@@ -449,5 +450,116 @@ func checkTrash(report *DoctorReport) {
 		Summary:    fmt.Sprintf("User Trash contains %d item(s) occupying %s", count, core.FormatBytes(totalBytes)),
 		Details:    "Items in ~/.Trash continue consuming drive space until emptied",
 		FixCommand: "sf clean --trash",
+	})
+}
+
+// BinaryConflict describes a situation where multiple sf executables exist and one shadows another.
+type BinaryConflict struct {
+	ActivePath    string   `json:"active_path"`
+	ShadowedPaths []string `json:"shadowed_paths"`
+	IsHomebrew    bool     `json:"is_homebrew"`
+}
+
+// DetectBinaryShadowing scans PATH and standard installation paths to determine
+// if multiple distinct 'sf' binaries exist on the host system.
+func DetectBinaryShadowing() (*BinaryConflict, error) {
+	home, _ := os.UserHomeDir()
+	pathEnv := os.Getenv("PATH")
+	dirs := filepath.SplitList(pathEnv)
+
+	// Include standard well-known locations to catch unlinked or shadowed binaries
+	standardDirs := []string{
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+	}
+	if home != "" {
+		standardDirs = append(standardDirs, filepath.Join(home, ".local", "bin"), filepath.Join(home, "bin"))
+	}
+
+	seenResolved := make(map[string]string)
+	var foundPaths []string
+
+	checkDir := func(d string) {
+		bin := filepath.Join(d, "sf")
+		info, err := os.Stat(bin)
+		if err != nil || info.IsDir() {
+			return
+		}
+		if info.Mode()&0111 == 0 {
+			return
+		}
+		real, err := filepath.EvalSymlinks(bin)
+		if err != nil {
+			real = bin
+		}
+		if _, exists := seenResolved[real]; !exists {
+			seenResolved[real] = bin
+			foundPaths = append(foundPaths, bin)
+		}
+	}
+
+	for _, d := range dirs {
+		checkDir(d)
+	}
+	for _, d := range standardDirs {
+		checkDir(d)
+	}
+
+	if len(foundPaths) <= 1 {
+		return nil, nil
+	}
+
+	active := foundPaths[0]
+	shadowed := foundPaths[1:]
+
+	isHb := false
+	for _, p := range foundPaths {
+		real := seenResolved[p]
+		if strings.Contains(p, "/opt/homebrew/") || strings.Contains(real, "Cellar") || strings.Contains(p, "/usr/local/Cellar/") {
+			isHb = true
+			break
+		}
+	}
+
+	return &BinaryConflict{
+		ActivePath:    active,
+		ShadowedPaths: shadowed,
+		IsHomebrew:    isHb,
+	}, nil
+}
+
+func checkBinaryShadowing(report *DoctorReport) {
+	conflict, err := DetectBinaryShadowing()
+	if err != nil || conflict == nil || len(conflict.ShadowedPaths) == 0 {
+		report.Results = append(report.Results, CheckResult{
+			ID:       "binary_path",
+			Name:     "Executable PATH Resolution",
+			Category: "Configuration",
+			Severity: SeverityOK,
+			Summary:  "Single active 'sf' binary in PATH (no executable shadowing)",
+		})
+		return
+	}
+
+	shadowedList := strings.Join(conflict.ShadowedPaths, ", ")
+	fixCmd := fmt.Sprintf("rm %s", conflict.ShadowedPaths[0])
+	if strings.Contains(conflict.ActivePath, ".local/bin") || (!strings.Contains(conflict.ActivePath, "homebrew") && strings.Contains(shadowedList, "homebrew")) {
+		fixCmd = fmt.Sprintf("rm %s", conflict.ActivePath)
+	}
+
+	summary := fmt.Sprintf("Multiple 'sf' binaries found: %s shadows %s", conflict.ActivePath, shadowedList)
+	details := "Earlier directories in your $PATH precede Homebrew, causing updates via 'brew upgrade' to be masked by an older binary"
+	if !conflict.IsHomebrew {
+		details = "Multiple 'sf' executables in your $PATH may cause version discrepancies and unapplied updates"
+	}
+
+	report.Results = append(report.Results, CheckResult{
+		ID:         "binary_path",
+		Name:       "Executable PATH Resolution",
+		Category:   "Configuration",
+		Severity:   SeverityWarning,
+		Summary:    summary,
+		Details:    details,
+		FixCommand: fixCmd,
 	})
 }
