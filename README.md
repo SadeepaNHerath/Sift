@@ -5,7 +5,7 @@
 <h1 align="center">Sift (<code>sf</code>)</h1>
 
 <p align="center">
-  <strong>Blazing-fast, terminal-first macOS maintenance, app uninstaller & disk analysis toolkit</strong>
+  <strong>Terminal macOS maintenance, app uninstaller, and disk space analyzer</strong>
 </p>
 
 <p align="center">
@@ -25,52 +25,53 @@
 
 ---
 
-**Sift (`sf`)** is a blazing-fast, terminal-first macOS maintenance, app uninstallation, and disk analysis toolkit. Built in Go, it replaces bloated commercial cleaners, background telemetry daemons, and expensive subscription utilities with a single, standalone binary that puts full control back into your hands.
+**Sift (`sf`)** is an open source macOS maintenance, uninstallation, and disk analysis tool written in Go. It runs only on demand with no background daemons, no telemetry, and no subscriptions.
 
 ---
 
 ## Table of Contents
 
-- [Why Sift?](#why-sift)
-- [Feature Comparison](#feature-comparison)
-- [Installation](#installation)
-- [Quick Start Guide](#quick-start-guide)
-- [Command Reference](#command-reference)
-- [Safety Guarantees](#safety-guarantees)
-- [Configuration Paths](#configuration-paths)
-- [Development](#development)
-- [License](#license)
+* [Why Sift?](#why-sift)
+* [Feature Comparison](#feature-comparison)
+* [Installation](#installation)
+* [Quick Start Guide](#quick-start-guide)
+* [Command Reference](#command-reference)
+* [Safety Guarantees](#safety-guarantees)
+* [Configuration Paths](#configuration-paths)
+* [Development](#development)
+* [License](#license)
 
 ---
 
 ## Why Sift?
 
-Commercial Mac cleaners often install persistent background daemons, consume hundreds of megabytes of RAM, send telemetry to third-party servers, and charge ongoing subscription fees. 
+Most Mac cleaners run background daemons, consume hundreds of megabytes of memory, send telemetry, and charge monthly subscriptions.
 
-**Sift takes the opposite approach:**
-- **Zero Background Daemons**: Runs only when you invoke it. Consumes 0 MB of idle RAM.
-- **Terminal-First & Interactive**: Launch `sf` for a keyboard-driven TUI, or run specific subcommands with flags in scripts and automation pipelines.
-- **Safety First**: Refuses to run directly under `sudo` to protect against unintentional root damage. Features strict SIP and system path denylists, dry-run simulation, and macOS Trash-first deletion.
-- **Developer-Centric**: Deep purging for Xcode `DerivedData`, Docker containers/images, Homebrew caches, Gradle, and Rust Cargo artifacts.
-- **Touch ID Elevation**: Native PAM integration allows Touch ID verification for elevated operations without typing administrator passwords.
+Sift is built differently:
+* **Zero Background Daemons**: Runs only when called. Consumes 0 MB of idle memory.
+* **Terminal First**: Run `sf` for an interactive terminal interface, or run individual commands with flags in scripts.
+* **Safe Deletion**: Refuses to run under `sudo`, respects Apple System Integrity Protection (SIP) paths, supports dry run mode, and moves files to macOS Trash by default.
+* **Developer Caches**: Cleans Xcode DerivedData, Docker containers and images, Homebrew caches, Gradle, and Cargo build artifacts.
+* **Touch ID Support**: Uses macOS PAM so you can confirm elevated operations with Touch ID instead of typing passwords.
+* **Base 10 Storage**: Matches macOS Finder and Disk Utility byte for byte (1 GB = 1,000,000,000 bytes) so disk numbers are always consistent.
 
 ---
 
 ## Feature Comparison
 
-| Feature / Capability | Sift (`sf`) | CleanMyMac X | AppCleaner | DaisyDisk | iStat Menus |
+| Feature | Sift (`sf`) | CleanMyMac X | AppCleaner | DaisyDisk | iStat Menus |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Pricing** | **100% Free & Open Source** | $39.95/yr subscription | Free (Closed Source) | $9.99 one-time | $11.99 one-time |
+| **Pricing** | **Free & Open Source** | $39.95/yr subscription | Free (Closed Source) | $9.99 one-time | $11.99 one-time |
 | **License** | **MIT** | Proprietary | Proprietary | Proprietary | Proprietary |
-| **Interface** | **Terminal TUI & CLI** | Cocoa / Electron GUI | Basic Cocoa GUI | GUI Treemap | Menu Bar GUI |
+| **Interface** | **Terminal TUI and CLI** | Cocoa / Electron GUI | Basic Cocoa GUI | GUI Treemap | Menu Bar GUI |
 | **Idle Memory Footprint** | **0 MB (No Daemons)** | 400 MB+ (Background) | 0 MB | 0 MB | ~80 MB (Always-on) |
-| **Telemetry & Privacy** | **Zero Telemetry (100% Offline)** | Analytics & Tracking | None | Analytics | Analytics |
+| **Telemetry & Privacy** | **Zero Telemetry (Offline)** | Analytics & Tracking | None | Analytics | Analytics |
 | **App Uninstaller & Leftovers** | **Yes (Deep Container Scan)** | Yes | Yes (Basic Library) | No | No |
-| **Disk Space Analyzer** | **Yes (Multi-threaded)** | Basic | No | Yes (Visual Treemap) | Disk stats only |
+| **Disk Space Analyzer** | **Yes (Multithreaded)** | Basic | No | Yes (Visual Treemap) | Disk stats only |
 | **Developer Artifacts Purge** | **Yes (Xcode, Docker, Brew)** | No | No | No | No |
 | **Touch ID for Sudo** | **Yes (Native PAM helper)** | Password dialogs | Password dialogs | Password dialogs | Password dialogs |
-| **Scriptable & CI-Friendly** | **Yes (UNIX pipes, stdout)** | No | No | No | No |
-| **Safety Path Denylist & Non-Root** | **Strict SIP & Non-Root Guard** | Helper daemon | Basic prompt | Read-only | Read-only |
+| **Scriptable & CI Ready** | **Yes (UNIX pipes, stdout)** | No | No | No | No |
+| **SIP and Non Root Protection** | **Strict SIP & Non Root Guard** | Helper daemon | Basic prompt | Read-only | Read-only |
 
 ---
 
@@ -83,7 +84,7 @@ brew tap SadeepaNHerath/tap
 brew install sf
 ```
 
-### Method 2: One-Line Shell Installer
+### Method 2: Shell Installer
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Sift/main/install.sh | bash
@@ -91,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/SadeepaNHerath/Sift/main/install.sh
 
 ### Method 3: From Source
 
-Requires **Go 1.23+** and standard macOS command-line tools:
+Requires **Go 1.23+** and standard macOS command line tools:
 
 ```bash
 git clone https://github.com/SadeepaNHerath/Sift.git
@@ -119,11 +120,11 @@ sf
 ```
 
 The interactive menu displays live macOS metrics (hostname, OS build, architecture, disk usage) and provides keyboard shortcuts:
-- `↑` / `k` : Move selection up
-- `↓` / `j` : Move selection down
-- `1` – `6` : Quick jump to shortcut command
-- `↵ Enter` : Execute selected action
-- `q` / `Esc` / `Ctrl+C` : Clean exit restoring terminal state
+* `↑` / `k` : Move selection up
+* `↓` / `j` : Move selection down
+* `1` to `6` : Quick jump to shortcut command
+* `↵ Enter` : Execute selected action
+* `q` / `Esc` / `Ctrl+C` : Clean exit restoring terminal state
 
 ```text
    ____ ___ _____ _____ 
@@ -131,20 +132,20 @@ The interactive menu displays live macOS metrics (hostname, OS build, architectu
   \___ \ | || |_    | |  
    ___) || ||  _|   | |  
   |____/|___|_|     |_|  
-  v1.0.0 • Terminal-first macOS maintenance toolkit
+  v2.2.0 • Terminal macOS maintenance toolkit
 
 ┌────────────────────────────────────────────────────────────────────────┐
-│  Host: Mac.local │ OS: macOS 27.0 (arm64) │ Disk: 32.5 GB free / 228.3 GB (85.8% used) │ User: admin │
+│  Host: Mac.local │ OS: macOS 27.0 (arm64) │ Disk: 32.5 GB free / 245.1 GB (86.7% used) │ User: admin │
 └────────────────────────────────────────────────────────────────────────┘
 
   Shortcut Commands:
 
- ❯ [1] 🧹 Clean      Clean system caches, app logs, and temporary junk
-   [2] 🗑️  Uninstall  Safely remove applications and all associated leftovers
+ ❯ [1] 🧹 Clean      Clean system caches, app logs, and temporary files
+   [2] 🗑️  Uninstall  Remove applications and associated leftover files
    [3] ⚡ Optimize   Rebuild caches, flush DNS, and run system optimizations
    [4] 📊 Analyze    Analyze disk space usage and locate large files
    [5] 🩺 Status     Check system health, disk metrics, and security overview
-   [6] 🔥 Purge      Deep purge Xcode, Docker, Homebrew, and dev caches
+   [6] 🔥 Purge      Clean Xcode, Docker, Homebrew, and dev caches
 
   ↑/k Up  •  ↓/j Down  •  1-6 Quick Jump  •  ↵ Enter Launch  •  q/Esc Quit
 ```
@@ -158,27 +159,27 @@ The interactive menu displays live macOS metrics (hostname, OS build, architectu
 | Command | Shortcut | Description |
 | :--- | :---: | :--- |
 | [`sf clean`](#sf-clean) | `1` | Scan and clean system, user, and application caches |
-| [`sf uninstall`](#sf-uninstall) | `2` | Locate applications and eliminate all associated leftovers |
-| [`sf dedup`](#sf-dedup) | `3` | 3-phase duplicate finder with APFS Copy-on-Write cloning & hardlinking |
-| [`sf analyze`](#sf-analyze) | `4` | High-speed multi-threaded disk usage and large file analyzer |
-| [`sf status`](#sf-status) | `5` | Comprehensive overview of system storage, health, and security |
-| [`sf purge`](#sf-purge) | `6` | Deep purge developer artifacts (Xcode, Docker, Homebrew, Cargo, AI models) |
-| [`sf startup`](#sf-startup) | — | Manage launch agents, daemons, and orphaned background services |
-| [`sf privacy`](#sf-privacy) | — | Wipe forensic trails, clipboard history, and recent items |
-| [`sf optimize`](#sf-optimize) | — | Flush DNS, purge RAM caches, and optimize LaunchServices |
-| [`sf installer`](#sf-installer) | — | Find and remove stale `.dmg`, `.pkg`, and installer archives |
-| [`sf touchid`](#sf-touchid) | — | Configure Touch ID PAM authentication for terminal operations |
-| [`sf doctor`](#sf-doctor) | — | Diagnose permissions, SIP status, disk access, and environment |
-| [`sf history`](#sf-history) | — | Inspect the historical audit log of all maintenance actions |
-| [`sf update`](#sf-update) | — | Check for and apply updates to Sift from GitHub releases |
-| [`sf completion`](#sf-completion) | — | Generate shell autocompletion scripts |
+| [`sf uninstall`](#sf-uninstall) | `2` | Locate applications and remove associated leftover files |
+| [`sf dedup`](#sf-dedup) | `3` | Find duplicates with APFS Copy on Write cloning and hardlinks |
+| [`sf analyze`](#sf-analyze) | `4` | Multithreaded disk usage and large file analyzer |
+| [`sf status`](#sf-status) | `5` | Overview of system storage, health, and security status |
+| [`sf purge`](#sf-purge) | `6` | Clean developer build artifacts for Xcode, Docker, Homebrew, and Cargo |
+| [`sf startup`](#sf-startup) | CLI | Manage launch agents, daemons, and background services |
+| [`sf privacy`](#sf-privacy) | CLI | Clear clipboard history, recent items, and crash logs |
+| [`sf optimize`](#sf-optimize) | CLI | Flush DNS cache, purge inactive memory, and update LaunchServices |
+| [`sf installer`](#sf-installer) | CLI | Find and remove downloaded DMG and PKG installers |
+| [`sf touchid`](#sf-touchid) | CLI | Configure Touch ID PAM authentication for terminal operations |
+| [`sf doctor`](#sf-doctor) | CLI | Diagnose disk permissions, SIP status, and configuration health |
+| [`sf history`](#sf-history) | CLI | View audit log of previous maintenance operations |
+| [`sf update`](#sf-update) | CLI | Check for and apply updates from GitHub releases |
+| [`sf completion`](#sf-completion) | CLI | Generate shell autocompletion scripts |
 
 ---
 
 ### Command Details
 
 #### `sf clean`
-Safely identify and remove user caches, application logs, diagnostic reports, and temporary files.
+Find and remove user caches, application logs, diagnostic reports, and temporary files.
 ```bash
 sf clean                    # Interactive scan and cleanup
 sf clean --dry-run          # Preview items to be cleaned without deleting
@@ -187,26 +188,26 @@ sf clean --user             # Target only ~/Library caches
 ```
 
 #### `sf uninstall [app...]`
-Comprehensively uninstalls macOS `.app` bundles along with all sandboxed Containers, Application Support folders, preferences (`.plist`), crash logs, and launch daemons.
+Uninstalls macOS application bundles and removes sandboxed containers, Application Support folders, preferences (`.plist`), and crash logs.
 ```bash
 sf uninstall "Slack"
 sf uninstall /Applications/Figma.app --dry-run
-sf uninstall "Zoom" --trash # Move leftovers to Trash instead of permanent purge
+sf uninstall "Zoom" --trash # Move leftovers to Trash instead of permanent deletion
 ```
 
 #### `sf dedup [paths...]`
-High-speed 3-phase duplicate finder (exact byte bucketing → 12KB sparse hash → full SHA-256). Supports **APFS Copy-on-Write cloning** (`clonefile(2)`) to reclaim storage blocks immediately with zero risk of breaking dependent apps.
+Finds duplicate files using exact size matching, sparse hashing, and SHA-256. Supports **APFS Copy on Write cloning** (`clonefile`) to reclaim storage blocks immediately without breaking dependent applications.
 ```bash
-sf dedup ~/Downloads                   # Interactive Bubble Tea resolver with QuickLook
+sf dedup ~/Downloads                   # Interactive resolver with QuickLook
 sf dedup ~/Documents --dry-run         # Preview duplicates without modifying files
-sf dedup ~/Downloads --clone --yes     # Replace duplicates with APFS CoW clones (zero file loss!)
+sf dedup ~/Downloads --clone --yes     # Replace duplicates with APFS CoW clones
 sf dedup ~/Projects --hardlink --yes   # Replace duplicates with filesystem hardlinks
 sf dedup ~/Movies --keep-oldest -y     # Keep oldest file in each set and trash copies
 sf dedup --min-size 10MB               # Scan files >= 10MB only
 ```
 
 #### `sf optimize`
-Runs macOS maintenance scripts, flushes local DNS resolvers, rebuilds the LaunchServices database, and frees purgeable memory.
+Runs macOS maintenance scripts, flushes local DNS cache, rebuilds LaunchServices, and frees purgeable memory.
 ```bash
 sf optimize
 sf optimize --dns           # Flush mDNSResponder cache only
@@ -214,7 +215,7 @@ sf optimize --ram           # Release inactive system memory
 ```
 
 #### `sf analyze [path]`
-Parallel multi-threaded scanner that breaks down disk usage, identifies large files, and surfaces directory hogs.
+Multithreaded directory scanner that calculates disk usage, identifies large files, and surfaces directory hogs.
 ```bash
 sf analyze                  # Analyze root disk volume
 sf analyze ~ --min-size 1GB # Show directories containing files > 1 GB
@@ -222,14 +223,14 @@ sf analyze /Users/Shared --depth 3
 ```
 
 #### `sf status`
-Displays instant system diagnostics including APFS volume snapshots, memory breakdown, thermal state, and SIP status.
+Shows system health diagnostics, disk usage matching macOS Finder, memory breakdown, thermal state, and SIP status.
 ```bash
 sf status
 sf status --json            # Output machine-readable JSON format
 ```
 
 #### `sf purge`
-Developer-tailored deep cleaner to reclaim gigabytes of storage from build artifacts.
+Cleans developer build artifacts, package manager caches, and local AI model weights.
 ```bash
 sf purge                    # Interactive selection of dev caches
 sf purge --xcode            # Clear Xcode DerivedData, Archives, and iOS DeviceSupport
@@ -238,27 +239,27 @@ sf purge --brew             # Clear Homebrew download caches and old formula ver
 ```
 
 #### `sf installer`
-Scans `~/Downloads` and cache directories for orphaned DMG disk images, PKG installers, and ISO images.
+Scans `~/Downloads` and cache directories for stale DMG disk images and PKG installers.
 ```bash
 sf installer
 sf installer --dry-run
 ```
 
 #### `sf touchid`
-Configures `/etc/pam.d/sudo` to enable Touch ID authentication for elevated commands in Terminal sessions.
+Configures `/etc/pam.d/sudo` to allow Touch ID authentication for elevated terminal operations.
 ```bash
 sf touchid --status         # Check current Touch ID PAM configuration
 sf touchid --enable         # Safely configure Touch ID for sudo
 ```
 
 #### `sf doctor`
-Validates full disk access permissions, checks System Integrity Protection (SIP), inspects terminal permissions, and diagnoses broken symbolic links.
+Verifies Full Disk Access permissions, System Integrity Protection (SIP) status, terminal permissions, and broken symbolic links.
 ```bash
 sf doctor
 ```
 
 #### `sf history`
-Queries the local SQLite audit ledger to display previous operations, files cleaned, and disk space saved.
+Reads the local SQLite audit ledger to display past cleanup operations and reclaimed storage.
 ```bash
 sf history
 sf history --limit 20
@@ -281,21 +282,21 @@ sf completion fish > ~/.config/fish/completions/sf.fish
 
 ## Safety Guarantees
 
-Sift is engineered specifically to prevent data loss and system corruption:
+Sift is designed to prevent data loss and system corruption:
 
-1. **Non-Root Execution Guard**:
-   Sift enforces an explicit EUID check that refuses direct execution via `sudo sf`. Running cleaners directly as root can damage system permissions and inadvertently delete protected user data. When elevated privileges are needed, Sift requests them scoped to the specific operation.
+1. **Non Root Execution Guard**:
+   Sift enforces an explicit check that refuses direct execution via `sudo sf`. Running cleaners directly as root can damage system permissions and delete user files. When elevated privileges are needed, Sift requests them scoped to the specific operation.
 
 2. **System Integrity Protection (SIP) Compliance**:
-   Sift respects Apple's SIP boundaries. System directories (`/System`, `/usr/bin`, `/sbin`, `/Library/Apple`) are hard-coded into an immutable safety denylist and will never be touched.
+   Sift respects Apple SIP boundaries. System directories (`/System`, `/usr/bin`, `/sbin`, `/Library/Apple`) are hard-coded into an immutable denylist and will never be touched.
 
-3. **Dry-Run Mode**:
-   Every destructive operation supports `--dry-run` to preview all target files, paths, and byte sizes before any action is taken.
+3. **Dry Run Mode**:
+   Destructive operations support `--dry-run` to preview all target files, paths, and byte sizes before any action is taken.
 
-4. **Trash-First Strategy**:
-   By default, user files and applications are moved to the macOS Trash (`~/.Trash`) rather than permanently unlinked, giving you a safe rollback window.
+4. **Trash First Strategy**:
+   By default, user files and applications are moved to the macOS Trash (`~/.Trash`) rather than permanently deleted, giving you a safe rollback window.
 
-5. **Local Audit Ledger**:
+5. **Local Audit Log**:
    All deletions and system changes are recorded in a local SQLite database (`~/.local/share/sf/history.db`) with timestamps, exact paths, and byte counts.
 
 ---

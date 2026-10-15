@@ -337,20 +337,29 @@ func renderDedupExecutionSummary(cmd *cobra.Command, report *core.RemovalReport)
 func parseByteSize(s string) (int64, error) {
 	s = strings.TrimSpace(strings.ToUpper(s))
 	if s == "" {
-		return 1024 * 1024, nil
+		return 1000 * 1000, nil
 	}
 
 	multiplier := int64(1)
 	cleanStr := s
 
-	if strings.HasSuffix(s, "GB") || strings.HasSuffix(s, "G") {
+	if strings.HasSuffix(s, "GIB") {
 		multiplier = 1024 * 1024 * 1024
+		cleanStr = strings.TrimSuffix(s, "GIB")
+	} else if strings.HasSuffix(s, "MIB") {
+		multiplier = 1024 * 1024
+		cleanStr = strings.TrimSuffix(s, "MIB")
+	} else if strings.HasSuffix(s, "KIB") {
+		multiplier = 1024
+		cleanStr = strings.TrimSuffix(s, "KIB")
+	} else if strings.HasSuffix(s, "GB") || strings.HasSuffix(s, "G") {
+		multiplier = 1000 * 1000 * 1000
 		cleanStr = strings.TrimSuffix(strings.TrimSuffix(s, "GB"), "G")
 	} else if strings.HasSuffix(s, "MB") || strings.HasSuffix(s, "M") {
-		multiplier = 1024 * 1024
+		multiplier = 1000 * 1000
 		cleanStr = strings.TrimSuffix(strings.TrimSuffix(s, "MB"), "M")
 	} else if strings.HasSuffix(s, "KB") || strings.HasSuffix(s, "K") {
-		multiplier = 1024
+		multiplier = 1000
 		cleanStr = strings.TrimSuffix(strings.TrimSuffix(s, "KB"), "K")
 	} else if strings.HasSuffix(s, "B") {
 		cleanStr = strings.TrimSuffix(s, "B")

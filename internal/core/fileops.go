@@ -282,20 +282,21 @@ func FileSize(path string) (int64, error) {
 	return total, err
 }
 
-// FormatBytes formats a byte count into a human-readable string (e.g., "1.2 GB", "456 MB").
+// FormatBytes formats a byte count into a human-readable string (e.g., "1.2 GB", "456 MB")
+// using decimal Base-10 units (1 KB = 1000 B) matching macOS Finder and Disk Utility.
 func FormatBytes(bytes int64) string {
 	if bytes <= 0 {
 		return "0 B"
 	}
-	if bytes < 1024 {
+	if bytes < 1000 {
 		return fmt.Sprintf("%d B", bytes)
 	}
 
 	units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
 	val := float64(bytes)
 	idx := 0
-	for val >= 1024 && idx < len(units)-1 {
-		val /= 1024
+	for val >= 1000 && idx < len(units)-1 {
+		val /= 1000
 		idx++
 	}
 

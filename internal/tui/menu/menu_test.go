@@ -12,25 +12,25 @@ func sampleItems() []Item {
 		{
 			Title:       "System Logs",
 			Description: "Log files older than 30 days",
-			Size:        1024 * 1024 * 50, // 50 MB
+			Size:        1000 * 1000 * 50, // 50 MB
 			Category:    "Caches",
 		},
 		{
 			Title:       "Xcode Caches",
 			Description: "DerivedData and Archives",
-			Size:        1024 * 1024 * 1024 * 5, // 5 GB
+			Size:        1000 * 1000 * 1000 * 5, // 5 GB
 			Category:    "Developer",
 		},
 		{
 			Title:       "Homebrew Cache",
 			Description: "Downloaded package tarballs",
-			Size:        1024 * 1024 * 200, // 200 MB
+			Size:        1000 * 1000 * 200, // 200 MB
 			Category:    "Developer",
 		},
 		{
 			Title:       "Protected Config",
 			Description: "System configuration file",
-			Size:        1024,
+			Size:        1000,
 			Protected:   true,
 			Category:    "System",
 		},
@@ -248,9 +248,9 @@ func TestFormatBytes(t *testing.T) {
 	}{
 		{0, "0 B"},
 		{500, "500 B"},
-		{1024, "1 KB"},
-		{1024 * 1024 * 5, "5 MB"},
-		{1024 * 1024 * 1024 * 3, "3 GB"},
+		{1000, "1 KB"},
+		{1000 * 1000 * 5, "5 MB"},
+		{1000 * 1000 * 1000 * 3, "3 GB"},
 	}
 
 	for _, tt := range tests {

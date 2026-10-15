@@ -219,7 +219,7 @@ func checkCaches(report *DoctorReport) {
 		return
 	}
 
-	sizeGB := float64(size) / (1024 * 1024 * 1024)
+	sizeGB := float64(size) / 1e9
 	if sizeGB >= 15.0 {
 		report.Results = append(report.Results, CheckResult{
 			ID:         "caches",
