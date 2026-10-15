@@ -44,7 +44,7 @@ type DedupOptions struct {
 // DefaultDedupOptions returns sensible default options for duplicate search.
 func DefaultDedupOptions() DedupOptions {
 	return DedupOptions{
-		MinSize: 1024 * 1024, // 1 MB
+		MinSize: 1000 * 1000, // 1 MB (decimal)
 		ExcludedDirs: []string{
 			".git",
 			".Trash",

@@ -164,8 +164,8 @@ func collectSystemSummary() sysSummary {
 		availBytes := stat.Bavail * bsize
 		usedBytes := totalBytes - (stat.Bfree * bsize)
 
-		totalGB := float64(totalBytes) / (1024 * 1024 * 1024)
-		freeGB := float64(availBytes) / (1024 * 1024 * 1024)
+		totalGB := float64(totalBytes) / 1e9
+		freeGB := float64(availBytes) / 1e9
 		pct := float64(usedBytes) / float64(totalBytes) * 100.0
 
 		summary.diskFree = fmt.Sprintf("%.1f GB free", freeGB)

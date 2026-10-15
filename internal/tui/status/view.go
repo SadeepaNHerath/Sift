@@ -586,13 +586,13 @@ func renderSparkline(points []float64, width int) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("#50FA7B")).Render(sb.String())
 }
 
-// formatBytes returns human-readable binary byte formats (B, KB, MB, GB, TB).
+// formatBytes returns human-readable decimal byte formats (B, KB, MB, GB, TB) matching macOS Finder.
 func formatBytes(b uint64) string {
 	const (
-		kb = 1024
-		mb = kb * 1024
-		gb = mb * 1024
-		tb = gb * 1024
+		kb = 1000
+		mb = kb * 1000
+		gb = mb * 1000
+		tb = gb * 1000
 	)
 
 	switch {
@@ -612,9 +612,9 @@ func formatBytes(b uint64) string {
 // formatRate returns human-readable throughput rates (B/s, KB/s, MB/s, GB/s).
 func formatRate(bps float64) string {
 	const (
-		kb = 1024.0
-		mb = kb * 1024.0
-		gb = mb * 1024.0
+		kb = 1000.0
+		mb = kb * 1000.0
+		gb = mb * 1000.0
 	)
 
 	switch {
